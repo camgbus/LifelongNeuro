@@ -1,6 +1,3 @@
-
-<span style="color:#8E7AD0;font-size:20px">HERE</span>
-
 Continual and lifelong learning in longitudinal neuroimaging datasets.
 
 ## Installation
