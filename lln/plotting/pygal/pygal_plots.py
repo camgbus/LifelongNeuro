@@ -1,11 +1,11 @@
 """Different plot examples generated with pygal
 """
 import pygal
-from lln.data.var_tailoring.discretization import boundaries_by_frequency, boundaries_by_range
-from lln.plotting.pygal.colors import palette
+from lln.data.variable_tailoring.discretization import boundaries_by_range
+from lln.plotting.colors import LIGHT_PALETTE
 
 custom_style = pygal.style.Style(
-    colors=tuple(sorted(list(palette.values())))
+    colors=tuple(sorted(list(LIGHT_PALETTE.values())))
     #,background='transparent'
     )
 

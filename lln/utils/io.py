@@ -43,6 +43,7 @@ def dump_json(obj, path, file_name=None):
     path = _get_full_path(path, file_name, ending='.json')
     # If keys are a tuple, divide with |||
     if isinstance(obj, dict) and isinstance(next(iter(obj.keys())), tuple):
+        print('is instance')
         obj = collections.OrderedDict([("|||".join(key), value) for key, value in obj.items()])
     with open(path, 'w') as f:
         json.dump(obj, f)

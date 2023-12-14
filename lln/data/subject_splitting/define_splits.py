@@ -15,7 +15,7 @@ def save_restore_visit_splits(df_name, output_path, k=5, seed=0, ensure_one_site
     name = f"splits_{df_name}_{k}_{seed}"
     try:
         splits = io.load_json(output_path, name)
-    except IOError:
+    except (IOError, FileNotFoundError):
         subjects_df = io.load_df(output_path, f"subjects_{df_name}.csv")
         if ensure_one_site_per_family:
             assert_one_site_per_family(subjects_df)
