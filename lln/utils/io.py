@@ -3,9 +3,9 @@
 
 import os
 import json
-import pandas as pd
 import collections
 import pickle
+import pandas as pd
 
 def _get_full_path(path, file_name=None, ending='.txt'):
     if file_name:
@@ -74,4 +74,3 @@ def load_json_obj_dict(class_def, path, file_name=None):
         obj_str = json.loads(value)
         parsed_obj[key] = class_def(**obj_str)
     return parsed_obj
-    
