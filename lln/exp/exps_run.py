@@ -8,10 +8,10 @@ from lln.utils.io_locking import read_pandas_df, unlock_file
 from lln.exp.Experiment import ExperimentRun
 from lln.utils.communication.TelegramBot import TelegramBot
 
-def update_exp_status(exps_file, from_status, to_status):
+def update_exp_status(exps_file, exp_name, config_name, from_status, to_status):
     '''Update the status of ongoing experiments to 'DONE' or 'FAILED'.'''
     file, df = read_pandas_df(exps_file)
-    df.loc[df['status'] == from_status, ['status', 'end']] = [to_status, pd.Timestamp.now()]
+    df.loc[(df['exp'] == exp_name) & (df['config'] == config_name) & (df['status'] == from_status), ['status', 'end']] = [to_status, pd.Timestamp.now()]
     unlock_file(file)
     df.to_csv(exps_file, index=False)
 
@@ -22,11 +22,11 @@ def get_next_exp(exps_file, hardware_name):
     if ready_rows.empty:
         return None
     next_exp = df[df['status'] == 'READY'].iloc[0]
-    exp_name, split, seed = next_exp['exp_name'], next_exp['split'], next_exp['seed']
-    df.loc[(df['exp_name'] == exp_name) & (df['split'] == split) & (df['seed'] == seed), ['status', 'hardware', 'start']] = ['RUNNING', hardware_name, pd.Timestamp.now()]
+    exp_name, config_name, split, seed = next_exp['exp'], next_exp['config'], next_exp['split'], next_exp['seed']
+    df.loc[(df['exp'] == exp_name) & (df['config'] == config_name) & (df['split'] == split) & (df['seed'] == seed), ['status', 'hardware', 'start']] = ['RUNNING', hardware_name, pd.Timestamp.now()]
     unlock_file(file)
     df.to_csv(exps_file, index=False)
-    return (exp_name, split, seed)
+    return (exp_name, config_name, split, seed)
 
 def run(args):
     
@@ -43,8 +43,8 @@ def run(args):
     next_exp = get_next_exp(exps_file, hardware_name)
     failures = 0
     while next_exp is not None:
-        exp_name, split, seed = next_exp
-        exp_run = ExperimentRun(exp_name, exps_path, split=split, seed=seed, debugging=debugging)
+        exp_name, config_name, split, seed = next_exp
+        exp_run = ExperimentRun(exps_path, exp_name, config_name, split=split, seed=seed, debugging=debugging)
         if debugging:
             exp_run.run(split, seed)
         else:
@@ -52,17 +52,17 @@ def run(args):
             try:
                 exp_run.run(split, seed)
                 exp_run.finish()
+                update_exp_status(exps_file, exp_name, config_name, from_status='RUNNING', to_status='DONE')
             except Exception:
                 exp_run.finish(failed=True)
                 failures += 1
-                update_exp_status(exps_file, from_status='RUNNING', to_status='FAILED')
-            com.send_msg(f'Finished {exp_name} run {split}, {seed} in {hardware_name} with {exp_run.summary["state"]}')
+                update_exp_status(exps_file, exp_name, config_name, from_status='RUNNING', to_status='FAILED')
+            com.send_msg(f'Finished {exp_name} run {split}, {seed} in {hardware_name} with {exp_run.summary[config_name]["state"]}')
 
         # Break to prevent chain failures
         if failures > 0:
             next_exp = None
         else:
-            update_exp_status(exps_file, from_status='RUNNING', to_status='DONE')
             next_exp = get_next_exp(exps_file, hardware_name)
 
     if failures > 0:
@@ -85,4 +85,3 @@ if __name__ == "__main__":
     args = parse_arguments()
     args = vars(args)
     run(args)
-
