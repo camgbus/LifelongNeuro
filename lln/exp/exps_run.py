@@ -8,39 +8,60 @@ from lln.utils.io_locking import read_pandas_df, unlock_file
 from lln.exp.Experiment import ExperimentRun
 from lln.utils.communication.TelegramBot import TelegramBot
 
-def update_exp_status(exps_file, exp_name, config_name, from_status, to_status):
-    '''Update the status of ongoing experiments to 'DONE' or 'FAILED'.'''
-    file, df = read_pandas_df(exps_file)
-    df.loc[(df['exp'] == exp_name) & (df['config'] == config_name) & (df['status'] == from_status), ['status', 'end']] = [to_status, pd.Timestamp.now()]
+def update_run_state(exps_file, exp_name, config_name, split, seed, to_state='DONE'):
+    '''Update the state of ongoing experiments to 'DONE' or 'FAILED' and free up blocked runs.'''
+    file, df = read_pandas_df(exps_file, column_types={'exp': str, 'config': str, 'split': str, 
+        'seed': int, 'state': str, 'blocked_by': str, 'hardware': str, 'start': str, 'end': str})
+    mask = (df['exp'] == exp_name) & (df['config'] == config_name) & (df['split'] == split) & (df['seed'] == seed) & (df['state'] == 'RUNNING')
+    df.loc[mask, ['state', 'end']] = [to_state, pd.Timestamp.now()]
+    if to_state == 'DONE':
+        # Remove that dependency from the 'blocked_by' column
+        mask = (df['exp'] == exp_name) & (df['split'] == split) & (df['seed'] == seed) & (df['state'] == 'BLOCKED')
+        df.loc[mask, 'blocked_by'] = df.loc[mask, 'blocked_by'].apply(lambda x: '-'.join([config for config in str(x).split('-') if config != config_name]))
+        df.loc[mask & (df['blocked_by'] == ''), 'state'] = 'READY'
     unlock_file(file)
     df.to_csv(exps_file, index=False)
 
-def get_next_exp(exps_file, hardware_name):
+def get_next_run(exps_file, hardware_name, ready_state='READY'):
     '''Returns the next experiment to run, or None if there are no more experiments to run.'''
-    file, df = read_pandas_df(exps_file)
-    ready_rows = df[df['status'] == 'READY']
+    file, df = read_pandas_df(exps_file, column_types={'exp': str, 'config': str, 'split': str, 
+        'seed': int, 'state': str, 'blocked_by': str, 'hardware': str, 'start': str, 'end': str})
+    ready_rows = df[df['state'] == ready_state]
+    to_state = 'RUNNING' if ready_state == 'READY' else 'FAILED'
     if ready_rows.empty:
         return None
-    next_exp = df[df['status'] == 'READY'].iloc[0]
+    next_exp = ready_rows.iloc[0]
     exp_name, config_name, split, seed = next_exp['exp'], next_exp['config'], next_exp['split'], next_exp['seed']
-    df.loc[(df['exp'] == exp_name) & (df['config'] == config_name) & (df['split'] == split) & (df['seed'] == seed), ['status', 'hardware', 'start']] = ['RUNNING', hardware_name, pd.Timestamp.now()]
+    df.loc[(df['exp'] == exp_name) & (df['config'] == config_name) & (df['split'] == split) & (df['seed'] == seed), ['state', 'hardware', 'start']] = [to_state, hardware_name, pd.Timestamp.now()]
     unlock_file(file)
     df.to_csv(exps_file, index=False)
     return (exp_name, config_name, split, seed)
 
 def run(args):
+    '''Run a single experiment run.
+    
+    Args:
+        exps_path (str): Path to the experiments folder.
+        hardware_name (str): Name of the hardware running the experiments.
+        communicator (str): Name of the communicator to use, e.g. telegram_bot
+        debugging (bool): Whether to run in debugging mode. In the debugging mode, no messages are 
+            sent through the communicator and instead of saving the stdout and potential traceback, 
+            they are printed to the console. Also, the state is kept as 'FAILED' instead of 'RUNNING'.
+    '''
     
     hardware_name = args.get('hardware_name', 'pc')
     debugging = args.get('debugging', False)
-
+    ready_state = 'READY' if not debugging else 'FAILED'
+    
     # Initialize communicator
     if args.get('communicator', 'telegram_bot') == 'telegram_bot':
         com = TelegramBot()
 
     # Collect available experiment runs and update the file
     exps_path = args.get('exps_path')
-    exps_file = os.path.join(exps_path, 'exps_summary.csv')    
-    next_exp = get_next_exp(exps_file, hardware_name)
+    exps_file = os.path.join(exps_path, 'exps_overview.csv')    
+    
+    next_exp = get_next_run(exps_file, hardware_name, ready_state=ready_state)
     failures = 0
     while next_exp is not None:
         exp_name, config_name, split, seed = next_exp
@@ -52,25 +73,28 @@ def run(args):
             try:
                 exp_run.run(split, seed)
                 exp_run.finish()
-                update_exp_status(exps_file, exp_name, config_name, from_status='RUNNING', to_status='DONE')
+                update_run_state(exps_file, exp_name, config_name, split, seed)
             except Exception:
                 exp_run.finish(failed=True)
                 failures += 1
-                update_exp_status(exps_file, exp_name, config_name, from_status='RUNNING', to_status='FAILED')
+                update_run_state(exps_file, exp_name, config_name, split, seed, to_state='FAILED')
             com.send_msg(f'Finished {exp_name} run {split}, {seed} in {hardware_name} with {exp_run.summary[config_name]["state"]}')
 
         # Break to prevent chain failures
-        if failures > 0:
+        if debugging or failures > 0:
             next_exp = None
         else:
-            next_exp = get_next_exp(exps_file, hardware_name)
+            next_exp = get_next_run(exps_file, hardware_name, ready_state=ready_state)
 
     if failures > 0:
         print(f'Finishing in {hardware_name} due to failures.')
         com.send_msg(f'Finishing in {hardware_name} due to failures.')
     else:
-        print(f'Finishing in {hardware_name} (no more experiments).')
-        com.send_msg(f'Finishing in {hardware_name} (no more experiments).') 
+        if debugging:
+            print(f'Finished debugging, finished exp {exp_name} config {config_name} run {split},{seed} successfully')
+        else:
+            print(f'Finishing in {hardware_name} (no more experiments).')
+            com.send_msg(f'Finishing in {hardware_name} (no more experiments).') 
 
 def parse_arguments():
     '''Parses the command line arguments.'''

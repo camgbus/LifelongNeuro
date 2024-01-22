@@ -26,11 +26,14 @@ def unlock_file(file):
         import fcntl
         fcntl.flock(file.fileno(), fcntl.LOCK_UN)
         
-def read_pandas_df(file_path):
+def read_pandas_df(file_path, column_types=None):
     while True:
         try:
-            file = open(file_path, 'r')
-            df = pd.read_csv(file_path)
+            file = open(file_path, 'r', encoding='utf-8')
+            if column_types is not None:
+                df = pd.read_csv(file_path, dtype=column_types)
+            else:
+                df = pd.read_csv(file_path)
             lock_file(file, exclusive=False)
             return file, df
         except IOError:

@@ -10,7 +10,19 @@ def add_refline(plot, location=None):
 def add_text(plot, text_labels = []):
     for (x, y, text) in text_labels:
         plot.ax_joint.text(x, y, text)
-        
+
+def highlight_legend_titles(ax, legend_titles):
+    '''Make the categories of the legend bold and add a space between them.'''
+    legend = ax.get_legend()
+    first_item = True
+    for text in legend.texts:
+        if text.get_text() in legend_titles:
+            if first_item:
+                first_item = False
+            else:
+                text.set_text('\n' + text.get_text())   
+            text.set_fontweight('bold')
+
 def plot_scatter(df, x_col, y_col, hue_col, title, figsize=(5, 5), palette=None, refline=None, text_labels=[]):
     if palette:
         palette = sns.color_palette(palette)

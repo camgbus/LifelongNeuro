@@ -28,22 +28,6 @@ class Experiment:
         self.config = config
         dump_json(self.config, path=self.path, file_name=f'config_{config["config_name"]}')
 
-    def average_runs(self, k_folds=None, seed=0, run_names=None):
-        '''Summarizes the results of multiple experiment runs, e.g. splits or seeds. Each run should 
-        have a subdirectory with the corresponding name. The summary is stored in the experiment 
-        directory. Summarized files are created with the suffix '_'.join(run_names).'''
-        if k_folds is not None:
-            assert run_names is None and seed is not None
-            run_names = [f'SPLIT_{split}_SEED_{seed}' for split in range(k_folds)]
-        for run_name in run_names:
-            run_path = os.path.join(self.path, run_name)
-            assert os.path.exists(run_path), "Experiment {}, run {} not found".format(
-                self.exp_name, run_name)
-            
-        # TODO actually average files
-        
-        return False
-    
 class ExperimentRun:
     '''An Experiment subdirecory with a specific config, split and seed.
     
@@ -67,22 +51,12 @@ class ExperimentRun:
             os.makedirs(self.run_path)
         self.config_name = config_name
         self.config = load_json(path=self.exp_path, file_name=f'config_{config_name}')
-        
-        self.summary = {'start_time': get_time_string(self.start_time)}
-        # Administer all the config states
-        waiting_for = self.config.get('needs', [])
-        if os.path.exists(os.path.join(self.run_path, 'run_configs.json')):
-            exp_configs = load_json(path=self.run_path, file_name='exp_configs')
-            waiting_for = [config for config in waiting_for if config not in exp_configs['done']]
-            exp_configs['waiting_for'][config_name] = waiting_for
-            status = 'BLOCKED' if len(waiting_for)>0 else 'READY'
-            exp_configs['status'][config_name] = status
+        # Update summary for this run
+        summary_path = os.path.join(self.run_path, 'summary.json')
+        if os.path.exists(summary_path):
             self.summary = load_json(path=self.run_path, file_name='summary')
         else:
-            status = 'BLOCKED' if len(waiting_for)>0 else 'READY'
-            exp_configs = {'done': [], 'waiting_for': {config_name: waiting_for}, 'status': {config_name: status}}
-            self.summary = dict()
-        dump_json(exp_configs, path=self.run_path, file_name='exp_configs')
+            self.summary = {}
         self.summary[config_name] = {'start_time': get_time_string(self.start_time)}
         
     def run(self, split, seed):
@@ -100,28 +74,14 @@ class ExperimentRun:
         elapsed_time = get_time() - self.start_time
         if failed:
             tb = traceback.format_exc()
-            self.summary[self.config_name]['state'] = 'FAILURE'
+            self.summary[self.config_name]['state'] = 'FAILED'
             with open(os.path.join(self.run_path, f'traceback_{self.config_name}.txt'), 'w', encoding="utf-8") as f:
                 f.write(tb)
         else:
-            self.summary[self.config_name]['state'] = 'SUCCESS'
+            self.summary[self.config_name]['state'] = 'DONE'
         self.summary[self.config_name]['elapsed_time'] = '{0:.2f} min'.format(elapsed_time.total_seconds()/60)
         if not self.debugging:
             sys.stdout = self.old_stdout
             with open(os.path.join(self.run_path, f'stdout_{self.config_name}.txt'), 'w', encoding="utf-8") as f:
                 f.write(self.stdout.getvalue())
         dump_json(self.summary, path=self.run_path, file_name='summary')
-        # Update the exp_configs file
-        exp_configs = load_json(path=self.run_path, file_name='exp_configs')
-        if failed:
-            exp_configs['status'][self.config_name] = 'FAILED'
-        else:
-            exp_configs['status'][self.config_name] = 'DONE'
-            exp_configs['done'].append(self.config_name)
-            for config_name in exp_configs['waiting_for']:
-                waiting_for = exp_configs['waiting_for'][config_name]
-                if self.config_name in waiting_for:
-                    exp_configs['waiting_for'][config_name].remove(self.config_name)
-                if len(waiting_for) == 0:
-                    exp_configs['status'][config_name] = 'READY'
-        dump_json(exp_configs, path=self.run_path, file_name='exp_configs')

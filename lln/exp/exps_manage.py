@@ -1,4 +1,4 @@
-"""Manage a "exps_summary.csv" file that summarizes the experiments going on in a given directory.
+"""Manage a "exps_overview.csv" file that summarizes the experiments going on in a given directory.
 """
 
 import csv
@@ -9,7 +9,9 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from lln.utils.io import load_json
 
-def create_exps_summary(exps_path, config_names, splits, seeds):
+
+
+def create_exps_overview(exps_path, config_names, splits, seeds):
     '''Creates a csv file with the summary of the experiments to be run.
     
     Args:
@@ -19,8 +21,8 @@ def create_exps_summary(exps_path, config_names, splits, seeds):
         seeds (list): list of seeds.
     '''
 
-    csv_file = os.path.join(exps_path, "exps_summary.csv")
-    columns = ["exp", "config", "split", "seed", "status", "hardware", "start", "end"]
+    csv_file = os.path.join(exps_path, "exps_overview.csv")
+    columns = ["exp", "config", "split", "seed", "state", "blocked_by", "hardware", "start", "end"]
     
     with open(csv_file, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.DictWriter(file, fieldnames=columns)
@@ -29,7 +31,7 @@ def create_exps_summary(exps_path, config_names, splits, seeds):
         exp_names = [item for item in os.listdir(exps_path) if os.path.isdir(os.path.join(exps_path, item))]
         
         for exp_name, config_name, split, seed in itertools.product(exp_names, config_names, splits, seeds):
-            writer.writerow({"exp": exp_name, "config": config_name, "split": split, "seed": seed, "status": "READY"})
+            writer.writerow({"exp": exp_name, "config": config_name, "split": str(split), "seed": seed, "state": "READY"})
 
 def add_exps_to_summary(exps_path, exp_names, config_names, splits, seeds):
     '''Updates the csv file with new experiments to be run.
@@ -41,8 +43,8 @@ def add_exps_to_summary(exps_path, exp_names, config_names, splits, seeds):
         splits (list): list of split names.
         seeds (list): list of seeds.
     '''
-    csv_file = os.path.join(exps_path, "exps_summary.csv")
-    columns = ["exp", "config", "split", "seed", "status", "hardware", "start", "end"]
+    csv_file = os.path.join(exps_path, "exps_overview.csv")
+    columns = ["exp", "config", "split", "seed", "state", "blocked_by", "hardware", "start", "end"]
     
     with open(csv_file, mode='a', newline='', encoding='utf-8') as file:
         writer = csv.DictWriter(file, fieldnames=columns)
@@ -50,16 +52,16 @@ def add_exps_to_summary(exps_path, exp_names, config_names, splits, seeds):
         for exp_name, config_name, split, seed in itertools.product(exp_names, config_names, splits, seeds):
             
             config = load_json(path=os.path.join(exps_path, exp_name), file_name=f'config_{config_name}')
-            waiting_for = config.get('needs', [])
-            # Check if all the dependencies are completed
-            if all(any(row['exp'] == exp_name and row['config'] == needed_config and 
-                       row['split'] == split and row['seed'] == seed and row['status'] == 'DONE' 
-                       for row in csv.DictReader(open(csv_file))) for needed_config in waiting_for):
-                status = "READY"
-            else:
-                status = "BLOCKED"
-            
-            writer.writerow({"exp": exp_name, "config": config_name, "split": split, "seed": seed, "status": status})
+            blocked_by = config.get('needs', [])
+            # Remove the needed_config items that fulfill the condition
+            blocked_by = [needed_config for needed_config in blocked_by if 
+                           not any(row['exp'] == exp_name and row['config'] == needed_config and 
+                                   row['split'] == split and row['seed'] == seed and row['state'] == 'DONE' 
+                                   for row in csv.DictReader(open(csv_file, encoding='utf-8')))]
+            state = "READY" if len(blocked_by) == 0 else "BLOCKED"
+
+            writer.writerow({"exp": exp_name, "config": config_name, "split": str(split), "seed": 
+                seed, "state": state, "blocked_by": '-'.join(blocked_by)})
 
 def visualize_ongoing_exps(exps_path, save=True):
     '''Visualizes the ongoing experiments in a given directory as a barplot.
@@ -68,18 +70,18 @@ def visualize_ongoing_exps(exps_path, save=True):
         exps_path (str): path to the directory of the experiment.
         save (bool): whether to save the plot or not.
     '''	
-    csv_file = os.path.join(exps_path, "exps_summary.csv")
+    csv_file = os.path.join(exps_path, "exps_overview.csv")
     df = pd.read_csv(csv_file)
     
     sns.set_style("whitegrid")  # Set the style to white grid
     
-    # Specify the colors for the status
-    status_colors = {"READY": "#d9d9d9", "RUNNING": "#a3cdf1", "FAILED": "#ff6b6b", "DONE": "#87c38f", "BLOCKED": "#ffe66d"}
+    # Specify the colors for the state
+    state_colors = {"READY": "#d9d9d9", "RUNNING": "#a3cdf1", "FAILED": "#ff6b6b", "DONE": "#87c38f", "BLOCKED": "#ffe66d"}
     
     _, ax = plt.subplots(figsize=(12, 6))  # Specify the figure size
     
     df['exp_config'] = df['exp'] + ' | ' + df['config']
-    ax = sns.countplot(data=df, x='exp_config', hue='status', palette=status_colors)
+    ax = sns.countplot(data=df, x='exp_config', hue='state', palette=state_colors)
 
     # Specify the order for the legend
     legend_order = ["READY", "RUNNING", "FAILED", "DONE", "BLOCKED"]
