@@ -37,7 +37,7 @@ def filter_by_complete_values(df, columns):
     '''Filter a subjects_df or visits_df by ensuring there are no missing values in some columns'''
     return df[df[[columns]].notnull().all(1)]
 
-def add_subject_vars(subjects_df, visits_df, columns, mode='nan', remove_from_visits=False):
+def add_subject_vars(subjects_df, visits_df, columns, mode='first', remove_from_visits=False):
     '''Add additional information to the subjects dataframe. If subjects_df == None, it is being 
     created for the first time. Possible modes to determine the value if there are several non-NaN 
     values are 'first', 'last', 'mean' or 'none'. If 'none', when there are inconsistent values, the

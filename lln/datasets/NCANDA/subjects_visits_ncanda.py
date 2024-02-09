@@ -35,23 +35,23 @@ class NCANDALoader(SubjectsVisitsLoader):
         for group in ["tabular", "structural", "functional", "diffusion"]:
             for subgroup, var_subgroup in VARS[group].items():
                 for file, var_list in var_subgroup:
-                    old_names_cols = [old_name for old_name, _ in var_list]
-                    rows = io.load_df(os.path.join(PATHS[group], file+'.csv'), sep =',', cols=["subject", "visit"]+old_names_cols)
-                    rows = rows.rename(columns={old_name: new_name for old_name, new_name in var_list})
-                    if visits_df is None:
-                        visits_df = rows
-                    else:
-                        visits_df = visits_df.merge(rows, on=["subject", "visit"])
-                    # Collect variable information
-                    for _, col_name in var_list:
-                        variable_info = [col_name, group, subgroup, is_numeric_dtype(visits_df[col_name])]
-                        possible_values = visits_df[col_name].dropna().unique()
-                        
-                        if variable_info[-1]:
-                            variable_info.append((min(possible_values), max(possible_values)))
+                    if var_list:
+                        old_names_cols = [old_name for old_name, _ in var_list]
+                        rows = io.load_df(os.path.join(PATHS[group], file+'.csv'), sep =',', cols=["subject", "visit"]+old_names_cols)
+                        rows = rows.rename(columns={old_name: new_name for old_name, new_name in var_list})
+                        if visits_df is None:
+                            visits_df = rows
                         else:
-                            variable_info.append(sorted(list(possible_values)))
-                        variables.append(variable_info+[None])
+                            visits_df = visits_df.merge(rows, on=["subject", "visit"])
+                        # Collect variable information
+                        for _, col_name in var_list:
+                            variable_info = [col_name, group, subgroup, is_numeric_dtype(visits_df[col_name])]
+                            possible_values = visits_df[col_name].dropna().unique()
+                            if len(possible_values)>0 and variable_info[-1]:
+                                variable_info.append((min(possible_values), max(possible_values)))
+                            else:
+                                variable_info.append(sorted(list(possible_values)))
+                            variables.append(variable_info+[None])
         # Rename variables, and replace visit names
         visits_df = visits_df.rename(columns={"subject": "subject_id", "visit": "visit_id"})
         visits_df = visits_df.replace({'visit_id': {"baseline": "year_0", "followup_1y": "year_1", "followup_2y": "year_2", "followup_3y": "year_3", "followup_4y": "year_4", "followup_5y": "year_5", "followup_6y": "year_6", "followup_7y": "year_7", "followup_8y": "year_8"}})
