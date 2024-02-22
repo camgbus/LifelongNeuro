@@ -19,27 +19,31 @@ class FullyConnected(Classifier):
         return logits
 
 class FullyConnected3(FullyConnected):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, dropout=0, **kwargs):
         super(FullyConnected3, self).__init__(*args, **kwargs)
         self.linear_layers = nn.Sequential(
             nn.Linear(self.input_size, 10),
             nn.ReLU(),
-            #nn.Dropout(p=0.05),
+            nn.Dropout(p=dropout),
             nn.Linear(10, 5),
             nn.ReLU(),
+            nn.Dropout(p=dropout),
             nn.Linear(5, len(self.labels)),
         )
     
 class FullyConnected5(FullyConnected):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, dropout=0, **kwargs):
         super(FullyConnected5, self).__init__(*args, **kwargs)
         self.linear_layers = nn.Sequential(
             nn.Linear(self.input_size, 512),
             nn.ReLU(),
+            nn.Dropout(p=dropout),
             nn.Linear(512, 256),
             nn.ReLU(),
+            nn.Dropout(p=dropout),
             nn.Linear(256, 256),
             nn.ReLU(),
+            nn.Dropout(p=dropout),
             nn.Linear(256, 128),
             nn.ReLU(),
             nn.Linear(128, len(self.labels)),
