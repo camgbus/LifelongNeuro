@@ -3,6 +3,7 @@
 
 from torch import nn
 from lln.models.classification.Classifier import Classifier
+import torch.nn.functional as F
 
 class FullyConnected(Classifier):
     def __init__(self, *args, input_size=28, **kwargs):
@@ -23,6 +24,7 @@ class FullyConnected3(FullyConnected):
         self.linear_layers = nn.Sequential(
             nn.Linear(self.input_size, 10),
             nn.ReLU(),
+            #nn.Dropout(p=0.05),
             nn.Linear(10, 5),
             nn.ReLU(),
             nn.Linear(5, len(self.labels)),

@@ -6,7 +6,6 @@ from torch import nn
 import torch.nn.init as init
 from lln.models.Model import Model
 
-"General, parent MLP Regressor class"
 class MLPRegressor(Model):
     def __init__(self, *args, input_size, output_size=1, **kwargs):
         super(MLPRegressor, self).__init__(*args, **kwargs)
@@ -29,9 +28,7 @@ class MLPRegressor(Model):
         with torch.no_grad():
             pred = self(x)
             return pred.detach()
-        
 
-"MLP Regressor with customizable architecture based on parameters"
 class MLPRegressorCustom(MLPRegressor):
     """
     Series of linear layers followed by ReLU activations, with the final layer having a sigmoid activation.
@@ -63,8 +60,6 @@ class MLPRegressorCustom(MLPRegressor):
         #set linear layers
         self.linear_layers = nn.Sequential(*layers)
 
-
-"Linear Regressor"
 class LinearRegressor(MLPRegressor):
     def __init__(self, *args, **kwargs):
         super(LinearRegressor, self).__init__(*args, **kwargs)

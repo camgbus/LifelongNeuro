@@ -114,32 +114,11 @@ class Trainer():
         '''Saves an optimizer state'''
         optimizer_state_name = self.name+'_optimizer_'+state_name+'.pth'
         torch.save(self.optimizer.state_dict(), os.path.join(self.states_path, optimizer_state_name))
-        '''        
-        # Save state of random number generators
-        random_gens_name = self.name+'_random_gen_states_'+state_name
-        random_gen_states = {'random': random.getstate(), 'numpy': np.random.get_state(), 
-                  'torch': torch.get_rng_state()}
-        try:
-            random_gen_states['cuda'] = torch.cuda.get_rng_state()
-        except:
-            pass
-        dump_pkl(random_gen_states, path=self.states_path, file_name=random_gens_name)
-        '''
         if verbose:
             print("Saved trainer state {} in {}".format(optimizer_state_name, self.states_path))
             
     def restore(self, state_name):
         '''Restores an optimizer state'''
-        # Restore states of random generators
-        '''
-        random_gens_name = self.name+'_random_gen_states_'+state_name
-        random_gen_states = load_pkl(path=self.states_path, file_name=random_gens_name)
-        random.setstate(random_gen_states['random'])
-        np.random.set_state(random_gen_states['numpy'])
-        torch.set_rng_state(random_gen_states['torch'])
-        if 'cuda' in random_gen_states:
-            torch.cuda.set_rng_state_all(random_gen_states['cuda'])
-        '''
         # Restore optimizer state
         optimizer_state_name = self.name+'_optimizer_'+state_name+'.pth'
         #random_gens_name = self.name+'_random_gen_states_'+state_name
