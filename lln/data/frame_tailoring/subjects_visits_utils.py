@@ -77,6 +77,7 @@ def add_subject_vars(subjects_df, visits_df, columns, mode='first', remove_from_
                 elif mode == 'mean':
                     new_row.append(np.mean(values))
                 else:
+                    print(f"Warning: Subject {subject_id} has inconsistent values for {col}: {values}")
                     new_row.append(np.nan)
         new_df.append(new_row)
     new_df = pd.DataFrame(new_df, columns=['subject'] + columns)

@@ -6,6 +6,7 @@ import json
 import collections
 import pickle
 import pandas as pd
+import lln
 
 def _get_full_path(path, file_name=None, ending='.txt'):
     if file_name:
@@ -74,3 +75,15 @@ def load_json_obj_dict(class_def, path, file_name=None):
         obj_str = json.loads(value)
         parsed_obj[key] = class_def(**obj_str)
     return parsed_obj
+
+def read_local_paths(paths_name):
+    '''Reads a json file with paths'''
+    with open(os.path.join(list(lln.__path__)[0], "local", f"paths_{paths_name}.json"), 'r') as file:
+        data = json.load(file)
+    return data
+
+def read_varset(var_set, exp_path):
+    '''Reads a json file with variable definitions'''
+    with open(os.path.join(exp_path, "varsets", f"variables_{var_set}.json"), 'r') as file:
+        varset = json.load(file)
+    return varset

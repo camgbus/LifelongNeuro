@@ -26,8 +26,7 @@ class SubjectsVisitsLoader:
             variables_df = io.load_df(self.store_path, f"variables_{df_name}.csv")
             return subjects_df, visits_df, variables_df
         except (FileNotFoundError, AssertionError):
-            print(f"""Files subjects_{df_name}.csv, visits_{df_name}.csv and variables_{df_name}.csv 
-                  being read and stored in {self.store_path}""")
+            print(f"""Files subjects_{df_name}.csv, visits_{df_name}.csv and variables_{df_name}.csv being read and stored in {self.store_path}""")
             subjects_df, visits_df, variables_df = self.read_data()
             io.dump_df(subjects_df, self.store_path, f"subjects_{df_name}.csv")
             io.dump_df(visits_df, self.store_path, f"visits_{df_name}.csv")
