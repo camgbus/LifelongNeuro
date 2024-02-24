@@ -19,7 +19,7 @@ def residualize(df, var, new_var_name=None, covs=[], verbose=False):
         cat_covs = [f'caty_{col}' for col in cat_covs]
         # Convert the categorical variables into dummy variables
         #'drop_first=True' drops the first category to avoid multicollinearity
-        df_with_dummies = pd.get_dummies(df, columns=cat_covs, drop_first=True)            
+        df_with_dummies = pd.get_dummies(df_with_dummies, columns=cat_covs, drop_first=True, dtype=int)            
     
     # Exog: The covariates we want to control for
     # Selecting the relevant variables for the independent variables (exog)
