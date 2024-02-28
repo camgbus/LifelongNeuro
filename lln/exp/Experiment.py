@@ -45,6 +45,8 @@ class ExperimentRun:
         self.exp_name = exp_name
         self.exp_path = os.path.join(exps_path, exp_name)
         assert os.path.exists(self.exp_path), f"Experiment not found in {self.exp_path}"
+        self.split = split
+        self.seed = seed
         self.run_name = f'SPLIT_{split}_SEED_{seed}'
         self.run_path = os.path.join(self.exp_path, self.run_name)
         if not os.path.exists(self.run_path):
@@ -59,14 +61,14 @@ class ExperimentRun:
             self.summary = {}
         self.summary[config_name] = {'start_time': get_time_string(self.start_time)}
         
-    def run(self, split, seed):
+    def run(self):
         ''''Runs the experiment with the given split and seed. The run_function is defined in the 
         config and should take the config, run path, split and seed as arguments.'''
         run_function_name = self.config['run_function']
         module_name, method_name = run_function_name.rsplit('.', 1)
         module = __import__(module_name, fromlist=[method_name])
         run_function = getattr(module, method_name)
-        run_function(self.config, self.run_path, split, seed)
+        run_function(self.config, self.run_path, self.split, self.seed)
 
     def finish(self, failed=False):
         '''Finishes the run by storing the summary and stdout. If failed, also stores the traceback.

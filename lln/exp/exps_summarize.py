@@ -8,6 +8,46 @@ sns.set_style("whitegrid")
 import matplotlib.pyplot as plt
 from lln.plotting.seaborn.plots import highlight_legend_titles
     
+    
+def summarize_runs(exps_path, exp_names=None, k_folds=None, seeds=[0], run_names=None,
+        state_selection_dataset='Val', state_selection_metric='B-Acc.', higher_is_better=True):
+    '''Export a results.csv file for each run, containing the best epoch for each metric and dataset.'''
+    if run_names is None:
+        run_names = [f'SPLIT_{split}_SEED_{seed}' for split, seed in itertools.product(range(k_folds), seeds)]
+    else:
+        assert k_folds is None and seeds is [0]
+    if exp_names is None:
+        exps_overview = pd.read_csv(os.path.join(exps_path, 'exps_overview.csv'))
+        exp_names = exps_overview[exps_overview['state'] == 'DONE']['exp']
+    for exp_name in exp_names:
+        for run_name in run_names:
+            run_path = os.path.join(exps_path, exp_name, run_name)
+            # Looks for the best epoch for a given metric and dataset
+            int_results_path = os.path.join(run_path, 'trainer')
+
+            df_progess = pd.read_csv(os.path.join(int_results_path, "progress.csv"))
+            df_loss_trajectory = pd.read_csv(os.path.join(int_results_path, "loss_trajectory.csv"))
+
+            if 'Loss' in state_selection_metric:
+                df = df_loss_trajectory
+            else:
+                df = df_progess
+                
+            df_selection = df[df['Dataset'] == state_selection_dataset].reset_index(drop=True)
+            if higher_is_better:
+                ix = df_selection[state_selection_metric].idxmax()
+                best_epoch = df_selection['Epoch'].iloc[df_selection[state_selection_metric].idxmax()]
+            else:
+                best_epoch = df_selection['Epoch'].iloc[df_selection[state_selection_metric].idxmax()]
+
+            df_progess = df_progess[df_progess['Epoch'] == best_epoch]
+            df_loss_trajectory = df_loss_trajectory[df_loss_trajectory['Epoch'] == best_epoch]
+
+            df = pd.merge(df_progess, df_loss_trajectory, on=['Epoch', 'Dataset'], how='inner')
+
+            results_path = os.path.join(run_path, 'results.csv')
+            df.to_csv(results_path, index=False)
+    
 def average_runs(exps_path, exp_names, k_folds=None, seeds=[0], run_names=None):
     '''Summarizes the results of multiple experiment runs, e.g. splits or seeds. Each run should 
     have a subdirectory with the corresponding name inside the experiment directory.'''
@@ -15,6 +55,9 @@ def average_runs(exps_path, exp_names, k_folds=None, seeds=[0], run_names=None):
         run_names = [f'SPLIT_{split}_SEED_{seed}' for split, seed in itertools.product(range(k_folds), seeds)]
     else:
         assert k_folds is None and seeds is [0]
+    if exp_names is None:
+        exps_overview = pd.read_csv(os.path.join(exps_path, 'exps_overview.csv'))
+        exp_names = exps_overview[exps_overview['state'] == 'DONE']['exp']
     for exp_name in exp_names:
         exp_path = os.path.join(exps_path, exp_name)
         
@@ -62,9 +105,12 @@ def _set_rows_mean_std(df, non_avg = ['Dataset']):
 
 import matplotlib.font_manager as fm
 
-def plot_progress(exps_path, exp_names, save=True):
+def plot_progress(exps_path, exp_names=None, save=True):
     '''Plots the progress of multiple runs and experiments in one plot. Runs from the same 
     experiment have the same color.'''
+    if exp_names is None:
+        exps_overview = pd.read_csv(os.path.join(exps_path, 'exps_overview.csv'))
+        exp_names = exps_overview[exps_overview['state'] == 'DONE']['exp']
     plotting_df = None
     for exp_name in exp_names:
         exp_path = os.path.join(exps_path, exp_name)
@@ -80,9 +126,16 @@ def plot_progress(exps_path, exp_names, save=True):
     # Create lineplots
     for metric in plotting_df.columns:
         if metric not in ['Epoch', 'Dataset', 'Method', 'Run']:
-            _, ax = plt.subplots(figsize=(8, 6))  # Specify the figure size
-            ax = sns.lineplot(data=plotting_df, x='Epoch', y=metric, hue='Method', style='Dataset')
-            ax.legend(loc='upper right', bbox_to_anchor=(1.45, 1))
+            fig, ax = plt.subplots(figsize=(8, 6))  # Specify the figure size
+            sns.lineplot(data=plotting_df, x='Epoch', y=metric, hue='Method', style='Dataset', ax=ax)
+            
+            # Place the legend outside the top right corner of the plot
+            handles, labels = ax.get_legend_handles_labels()  # Get handles and labels from one of the subplots
+            fig.legend(handles, labels, loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=plt.gcf().transFigure)
+
+            # Adjust the plot's layout to make room for the legend
+            plt.tight_layout()
+            
             highlight_legend_titles(ax, legend_titles = ['Method', 'Dataset'])
             
             # Save plots

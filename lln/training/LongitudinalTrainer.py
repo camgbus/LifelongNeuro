@@ -2,13 +2,13 @@
 """
 
 import os
+import pandas as pd
 import numpy as np
+import itertools
 import torch
 from lln.training.Trainer import Trainer
-from lln.eval.metrics.classification import confusion_matrix, balanced_accuracy, f1
-from lln.plotting.seaborn.confusion_matrix import plot_confusion_matrix
-from lln.plotting.seaborn.rendering import save
-
+from lln.eval.metrics.classification import balanced_accuracy, f1
+import sys
 SEED = 0
 torch.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED)
@@ -34,9 +34,7 @@ class LongitudinalTrainer(Trainer):
             progress_summary[dataloader_name] = dict()
             nr_batches = len(dataloader)
             total_loss = 0
-            targets = []
-            predictions = []
-            nonpadded_rows = []
+            targets, predictions, nonpadded_rows = [], [], []
             with torch.no_grad():
                 for X, y in dataloader:
                     X, y = X.to(self.device), y.to(self.device)
@@ -55,8 +53,7 @@ class LongitudinalTrainer(Trainer):
                 targets = np.concatenate(targets)
                 predictions = np.concatenate(predictions)
                 nonpadded_rows = np.concatenate(nonpadded_rows)
-                targets = targets[nonpadded_rows]
-                predictions = predictions[nonpadded_rows]
+                targets, predictions = targets[nonpadded_rows], predictions[nonpadded_rows]
                 
             self.progress.append([epoch_ix, dataloader_name] + [
                 METRICS[metric_name](targets, predictions) for metric_name in self.metrics])
@@ -70,13 +67,3 @@ class LongitudinalTrainer(Trainer):
                     progress_summary[dataloader_name][metric_name] = score
         if verbose:
             self.print_progress(epoch_ix, progress_summary)
-            
-    def plot_confusion_matrix(self, targets, predictions, file_name):
-        ''''Plot the confusion matrix for the given epoch.'''
-        cm = confusion_matrix(targets, predictions, nr_labels=len(self.labels))
-        plot = plot_confusion_matrix(cm, labels=self.labels, figure_size=(12,10))
-        path = os.path.join(self.trainer_path, 'confusion_matrices')
-        if not os.path.exists(path):
-            os.makedirs(path)
-        save(plot, path, file_name=file_name)
-        plot.close()

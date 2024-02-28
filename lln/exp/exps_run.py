@@ -8,35 +8,6 @@ from lln.utils.io_locking import read_pandas_df, unlock_file
 from lln.exp.Experiment import ExperimentRun
 from lln.utils.communication.TelegramBot import TelegramBot
 
-def update_run_state(exps_file, exp_name, config_name, split, seed, to_state='DONE'):
-    '''Update the state of ongoing experiments to 'DONE' or 'FAILED' and free up blocked runs.'''
-    file, df = read_pandas_df(exps_file, column_types={'exp': str, 'config': str, 'split': str, 
-        'seed': int, 'state': str, 'blocked_by': str, 'hardware': str, 'start': str, 'end': str})
-    mask = (df['exp'] == exp_name) & (df['config'] == config_name) & (df['split'] == split) & (df['seed'] == seed) & (df['state'] == 'RUNNING')
-    df.loc[mask, ['state', 'end']] = [to_state, pd.Timestamp.now()]
-    if to_state == 'DONE':
-        # Remove that dependency from the 'blocked_by' column
-        mask = (df['exp'] == exp_name) & (df['split'] == split) & (df['seed'] == seed) & (df['state'] == 'BLOCKED')
-        df.loc[mask, 'blocked_by'] = df.loc[mask, 'blocked_by'].apply(lambda x: '-'.join([config for config in str(x).split('-') if config != config_name]))
-        df.loc[mask & (df['blocked_by'] == ''), 'state'] = 'READY'
-    unlock_file(file)
-    df.to_csv(exps_file, index=False)
-
-def get_next_run(exps_file, hardware_name, ready_state='READY'):
-    '''Returns the next experiment to run, or None if there are no more experiments to run.'''
-    file, df = read_pandas_df(exps_file, column_types={'exp': str, 'config': str, 'split': str, 
-        'seed': int, 'state': str, 'blocked_by': str, 'hardware': str, 'start': str, 'end': str})
-    ready_rows = df[df['state'] == ready_state]
-    to_state = 'RUNNING' if ready_state == 'READY' else 'FAILED'
-    if ready_rows.empty:
-        return None
-    next_exp = ready_rows.iloc[0]
-    exp_name, config_name, split, seed = next_exp['exp'], next_exp['config'], next_exp['split'], next_exp['seed']
-    df.loc[(df['exp'] == exp_name) & (df['config'] == config_name) & (df['split'] == split) & (df['seed'] == seed), ['state', 'hardware', 'start']] = [to_state, hardware_name, pd.Timestamp.now()]
-    unlock_file(file)
-    df.to_csv(exps_file, index=False)
-    return (exp_name, config_name, split, seed)
-
 def run(args):
     '''Run a single experiment run.
     
@@ -67,11 +38,11 @@ def run(args):
         exp_name, config_name, split, seed = next_exp
         exp_run = ExperimentRun(exps_path, exp_name, config_name, split=split, seed=seed, debugging=debugging)
         if debugging:
-            exp_run.run(split, seed)
+            exp_run.run()
         else:
             com.send_msg(f'Starting {exp_name} run {split}, {seed} in {hardware_name}')
             try:
-                exp_run.run(split, seed)
+                exp_run.run()
                 exp_run.finish()
                 update_run_state(exps_file, exp_name, config_name, split, seed)
             except Exception:
@@ -91,10 +62,39 @@ def run(args):
         com.send_msg(f'Finishing in {hardware_name} due to failures.')
     else:
         if debugging:
-            print(f'Finished debugging, finished exp {exp_name} config {config_name} run {split},{seed} successfully')
+            print(f'Finished debugging, finished successfully or there were no FAILED experiments.')
         else:
             print(f'Finishing in {hardware_name} (no more experiments).')
-            com.send_msg(f'Finishing in {hardware_name} (no more experiments).') 
+            com.send_msg(f'Finishing in {hardware_name} (no more experiments).')
+
+def update_run_state(exps_file, exp_name, config_name, split, seed, to_state='DONE'):
+    '''Update the state of ongoing experiments to 'DONE' or 'FAILED' and free up blocked runs.'''
+    file, df = read_pandas_df(exps_file, column_types={'exp': str, 'config': str, 'split': str, 
+        'seed': int, 'state': str, 'blocked_by': str, 'hardware': str, 'start': str, 'end': str})
+    mask = (df['exp'] == exp_name) & (df['config'] == config_name) & (df['split'] == split) & (df['seed'] == seed) & (df['state'] == 'RUNNING')
+    df.loc[mask, ['state', 'end']] = [to_state, pd.Timestamp.now()]
+    if to_state == 'DONE':
+        # Remove that dependency from the 'blocked_by' column
+        mask = (df['exp'] == exp_name) & (df['split'] == split) & (df['seed'] == seed) & (df['state'] == 'BLOCKED')
+        df.loc[mask, 'blocked_by'] = df.loc[mask, 'blocked_by'].apply(lambda x: '-'.join([config for config in str(x).split('-') if config != config_name]))
+        df.loc[mask & (df['blocked_by'] == ''), 'state'] = 'READY'
+    unlock_file(file)
+    df.to_csv(exps_file, index=False)
+
+def get_next_run(exps_file, hardware_name, ready_state='READY'):
+    '''Returns the next experiment to run, or None if there are no more experiments to run.'''
+    file, df = read_pandas_df(exps_file, column_types={'exp': str, 'config': str, 'split': str, 
+        'seed': int, 'state': str, 'blocked_by': str, 'hardware': str, 'start': str, 'end': str})
+    ready_rows = df[df['state'] == ready_state]
+    to_state = 'RUNNING' if ready_state == 'READY' else 'FAILED'
+    if ready_rows.empty:
+        return None
+    next_exp = ready_rows.iloc[0]
+    exp_name, config_name, split, seed = next_exp['exp'], next_exp['config'], next_exp['split'], next_exp['seed']
+    df.loc[(df['exp'] == exp_name) & (df['config'] == config_name) & (df['split'] == split) & (df['seed'] == seed), ['state', 'hardware', 'start']] = [to_state, hardware_name, pd.Timestamp.now()]
+    unlock_file(file)
+    df.to_csv(exps_file, index=False)
+    return (exp_name, config_name, split, seed)
 
 def parse_arguments():
     '''Parses the command line arguments.'''

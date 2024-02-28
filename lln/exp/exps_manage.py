@@ -9,8 +9,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from lln.utils.io import load_json
 
-
-
 def create_exps_overview(exps_path, config_names, splits, seeds):
     '''Creates a csv file with the summary of the experiments to be run.
     
@@ -92,6 +90,8 @@ def visualize_ongoing_exps(exps_path, save=True):
 
     ax.set_xlabel("Experiment")  # Change the x-axis label to "Experiment"
     ax.set_ylabel("Count")  # Change the y-axis label to "Count"
+    
+    plt.xticks(rotation=90, ha='right', wrap=False)
 
     # Add count labels on top of each bar if count is not 0
     for p in ax.patches:

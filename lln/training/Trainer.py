@@ -9,6 +9,9 @@ import pandas as pd
 from lln.utils.io import dump_df, load_df, dump_pkl, load_pkl
 from lln.plotting.pygal.training_progress import plot_progress
 from lln.plotting.pygal.rendering import save_svg
+from lln.eval.metrics.classification import confusion_matrix
+from lln.plotting.seaborn.confusion_matrix import plot_confusion_matrix
+from lln.plotting.seaborn.rendering import save
 
 class Trainer():
     def __init__(self, trainer_path, device, optimizer, loss_f, metrics=None, seed=None):
@@ -86,7 +89,7 @@ class Trainer():
             for score, val in summary.items():
                 msg += " {0}: {1:.3f}".format(score, val)
             print(msg)
-    
+            
     def plot_progress(self, progress_df, loss_trajectory_df):
         ''''Plot one line plot for the loss trajetories, one for the metrics'''
         for metric in self.metrics:
@@ -127,3 +130,12 @@ class Trainer():
         self.progress = load_df(self.trainer_path, file_name='progress').values.tolist()
         self.loss_trajectory = load_df(self.trainer_path, file_name='loss_trajectory').values.tolist()
         
+    def plot_confusion_matrix(self, targets, predictions, file_name):
+        ''''Plot the confusion matrix for the given epoch.'''
+        cm = confusion_matrix(targets, predictions, nr_labels=len(self.labels))
+        plot = plot_confusion_matrix(cm, labels=self.labels, figure_size=(12,10))
+        path = os.path.join(self.trainer_path, 'confusion_matrices')
+        if not os.path.exists(path):
+            os.makedirs(path)
+        save(plot, path, file_name=file_name)
+        plot.close()

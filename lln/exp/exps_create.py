@@ -14,7 +14,6 @@ def create_exp(exps_path, exp_name, config):
     Args:
         exps_path (str): path to the directory where the experiment directory will be created.
         exp_name (str): name of the experiment, which is the name of the directory.
-        config_name (str): name of the config file to be stored in the experiment directory.
         config (dict): a dictionary with parameters that will be passed to the starting function.
     '''
     # If the exps_path does not exist, create it
