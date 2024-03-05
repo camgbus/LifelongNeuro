@@ -19,6 +19,7 @@ def summarize_runs(exps_path, exp_names=None, k_folds=None, seeds=[0], run_names
     if exp_names is None:
         exps_overview = pd.read_csv(os.path.join(exps_path, 'exps_overview.csv'))
         exp_names = exps_overview[exps_overview['state'] == 'DONE']['exp']
+    print(f"Summarizing runs for {len(exp_names)} experiments")
     for exp_name in exp_names:
         for run_name in run_names:
             run_path = os.path.join(exps_path, exp_name, run_name)
@@ -58,9 +59,12 @@ def average_runs(exps_path, exp_names, k_folds=None, seeds=[0], run_names=None):
     if exp_names is None:
         exps_overview = pd.read_csv(os.path.join(exps_path, 'exps_overview.csv'))
         exp_names = exps_overview[exps_overview['state'] == 'DONE']['exp']
+    # Check if summarize_runs has been executed. If not, execute it.
+    if not os.path.exists(os.path.join(exps_path, exp_names[0], run_names[0], 'results.csv')):
+        summarize_runs(exps_path, exp_names, run_names=run_names)
+    print(f"Averaging runs for {len(exp_names)} experiments")
     for exp_name in exp_names:
         exp_path = os.path.join(exps_path, exp_name)
-        
         # Average the results df
         results_df = None
         for run_name in run_names:
@@ -82,6 +86,28 @@ def average_runs(exps_path, exp_names, k_folds=None, seeds=[0], run_names=None):
                 progress_df = df if progress_df is None else pd.concat([progress_df, df], ignore_index=True)
             progress_df = _set_rows_mean_std(progress_df, non_avg=['Dataset', 'Epoch'])
             progress_df.to_csv(os.path.join(exp_path, file_name+'.csv'), index=False)
+
+def summarize_exps(exps_path, exp_names=None, k_folds=None, seeds=[0], run_names=None):
+    '''Summarizes the results of multiple experiments, e.g. different hyperparameter settings.'''
+    if run_names is None:
+        run_names = [f'SPLIT_{split}_SEED_{seed}' for split, seed in itertools.product(range(k_folds), seeds)]
+    else:
+        assert k_folds is None and seeds is [0]
+    if exp_names is None:
+        exps_overview = pd.read_csv(os.path.join(exps_path, 'exps_overview.csv'))
+        exp_names = exps_overview[exps_overview['state'] == 'DONE']['exp']
+    # Check if average_runs has been executed. If not, execute it.
+    if not os.path.exists(os.path.join(exps_path, exp_names[0], 'results.csv')):
+        average_runs(exps_path, exp_names, run_names=run_names)
+    print(f"Summarizing the results from {len(exp_names)} experiments")
+    exps_results = []
+    for exp_name in exp_names:
+        exp_results = pd.read_csv(os.path.join(exps_path, exp_name, 'results.csv'))
+        exp_results = exp_results[(exp_results['Run'] == 'Mean')]# | (exp_results['Run'] == 'Std')]
+        exp_results.insert(0, 'Exp', exp_name)
+        exps_results.append(exp_results)
+    merged_results = pd.concat(exps_results, ignore_index=True)
+    merged_results.to_csv(os.path.join(exps_path, 'exps_results.csv'), index=False)
         
 def _set_rows_mean_std(df, non_avg = ['Dataset']):
     non_avg_values = [[(x, col) for x in df[col].unique()] for col in non_avg]
@@ -105,7 +131,7 @@ def _set_rows_mean_std(df, non_avg = ['Dataset']):
 
 import matplotlib.font_manager as fm
 
-def plot_progress(exps_path, exp_names=None, save=True):
+def plot_progress(exps_path, exp_names=None, save=True, fig_size=(18, 6)):
     '''Plots the progress of multiple runs and experiments in one plot. Runs from the same 
     experiment have the same color.'''
     if exp_names is None:
@@ -126,17 +152,20 @@ def plot_progress(exps_path, exp_names=None, save=True):
     # Create lineplots
     for metric in plotting_df.columns:
         if metric not in ['Epoch', 'Dataset', 'Method', 'Run']:
-            fig, ax = plt.subplots(figsize=(8, 6))  # Specify the figure size
-            sns.lineplot(data=plotting_df, x='Epoch', y=metric, hue='Method', style='Dataset', ax=ax)
+            
+            line_styles = {'Train': (1, 1), 'Val': (2, 2), 'Test': (1, 0)}
+            sns_plot = sns.lineplot(data=plotting_df, x='Epoch', y=metric, hue='Method', style='Dataset', dashes=line_styles)
+            ax = plt.gca()
             
             # Place the legend outside the top right corner of the plot
             handles, labels = ax.get_legend_handles_labels()  # Get handles and labels from one of the subplots
-            fig.legend(handles, labels, loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=plt.gcf().transFigure)
+            labels = ['\n' + label if label in ['Dataset'] else label for label in labels]
+            ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.05, 1))
 
-            # Adjust the plot's layout to make room for the legend
-            plt.tight_layout()
-            
-            highlight_legend_titles(ax, legend_titles = ['Method', 'Dataset'])
+            # Adjust figure size and layout
+            plt.gcf().set_size_inches(fig_size[0], fig_size[1])  # Set the figure size (width, height in inches)
+            plt.tight_layout(rect=[0, 0, 0.75, 1])  # Adjust the padding of the figure. rect=[left, bottom, right, top] in normalized figure coordinates.
+
             
             # Save plots
             if save:
