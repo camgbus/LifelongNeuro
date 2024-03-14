@@ -32,8 +32,6 @@ class LongDataset(Dataset):
         self.X = defaultdict(list)
         self.y = defaultdict(list)
         
-        
-        
         # If the timepoints are specified and seq_to_seq=False, the last time point must be present
         subjects_no_target = []
         
