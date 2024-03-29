@@ -97,8 +97,8 @@ class NCANDALoader(SubjectsVisitsLoader):
                 var_lst = var_lst + [x.replace('left_', '') for x in left_struct_vars]
             # Join the ysr and asr mental health features
             if group_key == "redcap_additional":
-                new_subscales = {"anxdep": ["ysr_anxdep_t", "asr_anxdep_t"], "withdep": ["ysr_withdep_t", "asr_withdrawn_t"], "somatic": ["ysr_somatic_t", "asr_somatic_t"], "thought": ["ysr_thought_t", "asr_thought_t"], 
-                                 "attention": ["ysr_attention_t", "asr_attention_t"], "aggressive": ["ysr_aggress_t", "asr_aggressive_t"], "rulebreak": ["ysr_rulebrk_t", "asr_rulebreak_t"]}
+                new_subscales = {"anxdep": ["ysr_anxdep_raw", "asr_anxdep_raw"], "withdep": ["ysr_withdep_raw", "asr_withdrawn_raw"], "somatic": ["ysr_somatic_raw", "asr_somatic_raw"], "thought": ["ysr_thought_raw", "asr_thought_raw"], 
+                                 "attention": ["ysr_attention_raw", "asr_attention_raw"], "aggressive": ["ysr_aggress_raw", "asr_aggressive_raw"], "rulebreak": ["ysr_rulebrk_raw", "asr_rulebreak_raw"]}
                 for new_subscale, old_subscales in new_subscales.items():
                     # Note that only one value is present at once
                     visits_df[new_subscale] = visits_df[old_subscales].mean(axis=1)
@@ -149,7 +149,7 @@ class NCANDALoader(SubjectsVisitsLoader):
         subjects_df['race_ethnicity'] = subjects_df.apply(lambda row: 'Hispanic' if row['hispanic'] == 'Y' else row['race_label'], axis=1)
         subjects_df = subjects_df.drop("race_label", axis=1)
         subjects_df = subjects_df.drop("hispanic", axis=1)
-        var_lst = [x for x in var_lst if x not in ["hispanic", "race_label", "ysr_anxdep_t", "asr_anxdep_t", "ysr_withdep_t", "asr_withdrawn_t", "ysr_somatic_t", "asr_somatic_t", "ysr_thought_t", "asr_thought_t", "ysr_attention_t", "asr_attention_t", "ysr_aggress_t", "asr_aggressive_t", "ysr_rulebrk_t", "asr_rulebreak_t"]]
+        var_lst = [x for x in var_lst if x not in ["hispanic", "race_label", "ysr_anxdep_raw", "asr_anxdep_raw", "ysr_withdep_raw", "asr_withdrawn_raw", "ysr_somatic_raw", "asr_somatic_raw", "ysr_thought_raw", "asr_thought_raw", "ysr_attention_raw", "asr_attention_raw", "ysr_aggress_raw", "asr_aggressive_raw", "ysr_rulebrk_raw", "asr_rulebreak_raw"]]
         var_lst.insert(3, "race_ethnicity")
         var_groups["race_ethnicity"], var_subgroups["race_ethnicity"] = "redcap", "demographics"
         subject_vars = ["family_id", "race_ethnicity", "sex", "site", "ses_parent_yoe"]

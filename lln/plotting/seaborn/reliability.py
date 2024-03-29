@@ -7,6 +7,10 @@ import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
 from lln.eval.metrics.classification import balanced_accuracy, f1
+import warnings
+
+# Suppress UserWarnings (labels present in pred not present in target for some subsets)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 def plot_reliability_diagram(targets, predictions, uncertainties, name='',  nr_bins=10, 
                              cmap=None, save_path=None):
@@ -29,7 +33,7 @@ def plot_reliability_diagram(targets, predictions, uncertainties, name='',  nr_b
         bin_indices = np.where(bins == i)[0]
         if len(bin_indices) == 0:
             continue
-        # This ccan output a warning of "y_pred contains classes not in y_true" for some bins
+        # This can output a warning of "y_pred contains classes not in y_true" for some bins
         bin_accuracy[i] = balanced_accuracy(targets[bin_indices], predictions[bin_indices])
         bin_confidence[i] = confidences[bin_indices].mean()  # Average predicted probability
         bin_size[i] = len(bin_indices)
@@ -62,7 +66,7 @@ def plot_reliability_diagram(targets, predictions, uncertainties, name='',  nr_b
     plt.ylim(0, 1.1)
     
     # Draw a line from the lower-left corner to the upper-right corner
-    start_point = (0, 0)
+    start_point = (0, 0.5)
     end_point = (len(df['confidence']) - 1, 1) # df['accuracy'].max())
     plt.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], 'k:', color='gray')
     # Add N labels at the top of each bar
