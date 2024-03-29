@@ -5,7 +5,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 def normalize(df, features, feature_range=(-1,1), standard=False):
     '''Normalize the features into some range.'''
-    # Ensure no missing values
+    # Ensure no missing values    
     assert sum(df[features].isna().sum()) == 0
     
     if standard:
