@@ -39,6 +39,8 @@ def run(args):
         exp_run = ExperimentRun(exps_path, exp_name, config_name, split=split, seed=seed, debugging=debugging)
         if debugging:
             exp_run.run()
+            exp_run.finish()
+            update_run_state(exps_file, exp_name, config_name, split, seed, current_state='FAILED', to_state='DONE')
         else:
             com.send_msg(f'Starting {exp_name} run {split}, {seed} in {hardware_name}')
             try:
@@ -67,11 +69,11 @@ def run(args):
             print(f'Finishing in {hardware_name} (no more experiments).')
             com.send_msg(f'Finishing in {hardware_name} (no more experiments).')
 
-def update_run_state(exps_file, exp_name, config_name, split, seed, to_state='DONE'):
+def update_run_state(exps_file, exp_name, config_name, split, seed, current_state='RUNNING', to_state='DONE'):
     '''Update the state of ongoing experiments to 'DONE' or 'FAILED' and free up blocked runs.'''
     file, df = read_pandas_df(exps_file, column_types={'exp': str, 'config': str, 'split': str, 
         'seed': int, 'state': str, 'blocked_by': str, 'hardware': str, 'start': str, 'end': str})
-    mask = (df['exp'] == exp_name) & (df['config'] == config_name) & (df['split'] == split) & (df['seed'] == seed) & (df['state'] == 'RUNNING')
+    mask = (df['exp'] == exp_name) & (df['config'] == config_name) & (df['split'] == split) & (df['seed'] == seed) & (df['state'] == current_state)
     df.loc[mask, ['state', 'end']] = [to_state, pd.Timestamp.now()]
     if to_state == 'DONE':
         # Remove that dependency from the 'blocked_by' column
