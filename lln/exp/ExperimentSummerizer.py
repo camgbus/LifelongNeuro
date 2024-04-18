@@ -13,14 +13,15 @@ import matplotlib.font_manager as fm
 class ExperimentSummerizer:
     '''A class that summarizes and extracts certain results from an experiment
     '''
-    def __init__(self, exps_path, exp_name, run_names=None):
+    def __init__(self, exps_path, exp_name, run_names=None, config_name='train'):
         self.exps_path = exps_path
         self.exp_name = exp_name
         self.exp_path = os.path.join(self.exps_path, exp_name)
-        self.config = json.load(open(os.path.join(self.exp_path, "config_train.json"), 'r'))
+        self.config = json.load(open(os.path.join(self.exp_path, f"config_{config_name}.json"), 'r'))
+        self.config_suffix = f"_{config_name}" if config_name != 'train' else ''
         # Determine the run_names that summarize_run will run on
         if run_names is None:
-            run_names = [f'SPLIT_{split}_SEED_{seed}' for split, seed in itertools.product(range(self.config['nr_splits']), self.config['seeds'])]
+            run_names = [f'SPLIT_{split}_SEED_{seed}{self.config_suffix}' for split, seed in itertools.product(range(self.config['nr_splits']), self.config['seeds'])]
         self.run_names = run_names
     
     def summarize_average_runs(self, state_selection_dataset='Val', state_selection_metric='B-Acc.', higher_is_better=True):
@@ -54,22 +55,21 @@ class ExperimentSummerizer:
 
         df = pd.merge(df_progess, df_loss_trajectory, on=['Epoch', 'Dataset'], how='inner')
 
-        results_path = os.path.join(run_path, 'results.csv')
+        results_path = os.path.join(run_path, f'results{self.config_suffix}.csv')
         df.to_csv(results_path, index=False)
     
     def average_runs(self):
         '''Summarizes the results of multiple experiment runs, e.g. splits or seeds. Each run should 
         have a subdirectory with the corresponding name inside the experiment directory.'''
-            # Average the results df
         results_df = None
         for run_name in self.run_names:
             run_path = os.path.join(self.exp_path, run_name)
             assert os.path.exists(run_path), f"Experiment {self.exp_name}, run {run_name} not found"
-            df = pd.read_csv(os.path.join(run_path, 'results.csv'))
+            df = pd.read_csv(os.path.join(run_path, f'results{self.config_suffix}.csv'))
             df.insert(0, 'Run', run_name)
             results_df = df if results_df is None else pd.concat([results_df, df], ignore_index=True)
         results_df = self._set_rows_mean_std(results_df)
-        results_df.to_csv(os.path.join(self.exp_path, 'results.csv'), index=False)
+        results_df.to_csv(os.path.join(self.exp_path, f'results{self.config_suffix}.csv'), index=False)
             
         # Average the loss_trajectory and progress files
         for file_name in ['loss_trajectory', 'progress']:
@@ -92,9 +92,11 @@ class ExperimentSummerizer:
             filtered_df = df[filter_condition]
             # Calculate the mean and std of the filtered df and add them to the df
             if not filtered_df.empty:
-                mean_values = filtered_df.drop(non_avg + ['Run'], axis=1).mean().to_dict()
+                #mean_values = filtered_df.drop(non_avg + ['Run'], axis=1).mean().to_dict()
+                mean_values = filtered_df.drop(non_avg + ['Run'], axis=1).apply(lambda x: x.iloc[0] if x.dtype != 'float64' else x.mean()).to_dict()
                 mean_values['Run'] = 'Mean'
-                std_values = filtered_df.drop(non_avg + ['Run'], axis=1).std().to_dict()
+                #std_values = filtered_df.drop(non_avg + ['Run'], axis=1).std().to_dict()
+                std_values = filtered_df.drop(non_avg + ['Run'], axis=1).apply(lambda x: x.iloc[0] if x.dtype != 'float64' else x.std()).to_dict()
                 std_values['Run'] = 'Std'
                 for value, col in values:
                     mean_values[col] = value
@@ -160,7 +162,6 @@ class ExperimentsSummerizer:
                 plt.gcf().set_size_inches(fig_size[0], fig_size[1])  # Set the figure size (width, height in inches)
                 plt.tight_layout(rect=[0, 0, 0.75, 1])  # Adjust the padding of the figure. rect=[left, bottom, right, top] in normalized figure coordinates.
 
-                
                 # Save plots
                 if save:
                     output_file = os.path.join(self.exps_path, f"exps_trajectories_{metric}.svg")

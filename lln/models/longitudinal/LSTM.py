@@ -4,6 +4,7 @@
 import torch
 from torch import nn
 from lln.models.Model import Model
+import numpy as np
 
 class LSTM(Model):
     
@@ -12,6 +13,7 @@ class LSTM(Model):
         self.hidden_dim = hidden_dim
         self.nr_layers = nr_layers
         self.seq_to_seq = seq_to_seq
+        self.hidden_states = {}
         
         # LSTM layers
         self.lstm = nn.LSTM(input_dim, hidden_dim, nr_layers, batch_first=True)
@@ -45,3 +47,18 @@ class LSTM(Model):
         with torch.no_grad():
             pred = self(X)
             return int(pred.argmax().detach())
+    
+    def register_hooks(self):
+        self.hidden_states = {}
+        def lstm_hook(module, input, output):
+            # output is a tuple (out, (hn, cn))
+            lstm_output, (hn, cn) = output
+            self.hidden_states["lstm_output"] = lstm_output.detach()
+            self.hidden_states["hidden_state"] = hn.detach()
+            self.hidden_states["cell_state"] = cn.detach()
+        self.lstm.register_forward_hook(lstm_hook)
+        
+    def get_hooked_hidden_states(self):
+        for key, value in self.hidden_states.items():
+            self.hidden_states[key] = np.array(value)
+        return self.hidden_states

@@ -6,14 +6,16 @@ import numpy as np
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
-from lln.eval.metrics.classification import balanced_accuracy, f1
+from lln.eval.metrics.classification import balanced_accuracy, f1, accuracy
 import warnings
+
+METRICS = {'balanced_accuracy': balanced_accuracy, 'f1': f1, 'accuracy': accuracy}
 
 # Suppress UserWarnings (labels present in pred not present in target for some subsets)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 def plot_reliability_diagram(targets, predictions, uncertainties, name='',  nr_bins=10, 
-                             cmap=None, save_path=None):
+                             cmap=None, save_path=None, metric='balanced_accuracy'):
 
     sns.set_style('whitegrid')
 
@@ -34,7 +36,7 @@ def plot_reliability_diagram(targets, predictions, uncertainties, name='',  nr_b
         if len(bin_indices) == 0:
             continue
         # This can output a warning of "y_pred contains classes not in y_true" for some bins
-        bin_accuracy[i] = balanced_accuracy(targets[bin_indices], predictions[bin_indices])
+        bin_accuracy[i] = METRICS[metric](targets[bin_indices], predictions[bin_indices])
         bin_confidence[i] = confidences[bin_indices].mean()  # Average predicted probability
         bin_size[i] = len(bin_indices)
         ece += np.abs(bin_confidence[i] - bin_accuracy[i]) * (bin_size[i] / len(targets))
@@ -55,8 +57,8 @@ def plot_reliability_diagram(targets, predictions, uncertainties, name='',  nr_b
 
     # Set labels and title
     plt.xlabel('Confidence')
-    plt.ylabel('Balanced accuracy')
-    plt.title(f'Model Calibration, ECE: {ece:.2f}')
+    plt.ylabel(metric)
+    plt.title(f'Model Calibration {name}, ECE: {ece:.2f}')
     # Set x-axis ticks
     plt.gca().set_xticks(range(nr_bins))
     bin_labels = np.round(bin_limits, 2)
@@ -82,7 +84,7 @@ def plot_reliability_diagram(targets, predictions, uncertainties, name='',  nr_b
     '''
     
     if save_path:
-        output_file = os.path.join(save_path, f"calibration_{name}.svg")
+        output_file = os.path.join(save_path, f"calibration_{name}_{metric}.svg")
         plt.savefig(output_file, bbox_inches='tight')
         plt.close()
     else:

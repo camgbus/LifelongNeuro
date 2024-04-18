@@ -36,7 +36,7 @@ class ExperimentRun:
             used. The experiment directory has the name of the experiment.
         output_path (str): path to the directory where the experiment directory will be created.
     '''
-    def __init__(self, exps_path, exp_name, config_name, split=0, seed=0, debugging=False):
+    def __init__(self, exps_path, exp_name, config_name, split=0, seed=0, debugging=False, run_name=None):
         self.start_time = get_time()
         self.debugging = debugging
         if not debugging:
@@ -47,7 +47,10 @@ class ExperimentRun:
         assert os.path.exists(self.exp_path), f"Experiment not found in {self.exp_path}"
         self.split = split
         self.seed = seed
-        self.run_name = f'SPLIT_{split}_SEED_{seed}'
+        if run_name is None:
+            self.run_name = f'SPLIT_{split}_SEED_{seed}'
+        else:
+            self.run_name = run_name
         self.run_path = os.path.join(self.exp_path, self.run_name)
         if not os.path.exists(self.run_path):
             os.makedirs(self.run_path)
