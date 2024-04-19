@@ -9,6 +9,7 @@ sns.set_style("whitegrid")
 import matplotlib.pyplot as plt
 from lln.plotting.seaborn.plots import highlight_legend_titles
 import matplotlib.font_manager as fm
+from lln.exp.formatted_summary import shape_format_summarized_df
 
 class ExperimentSummerizer:
     '''A class that summarizes and extracts certain results from an experiment
@@ -108,15 +109,18 @@ class ExperimentsSummerizer:
     '''A class that summarizes the results of multiple experiments, plotting the training 
     trajectories jointly and summarizing the result columns from results.csv into a joint file.
     '''
-    def __init__(self, exps_path, exp_names=None, exp_better_names=None):
+    def __init__(self, name, exps_path, exp_names=None, exp_better_names=None):
         if exp_names is None:
             exps_overview = pd.read_csv(os.path.join(exps_path, 'exps_overview.csv'))
             exp_names = exps_overview[exps_overview['state'] == 'DONE']['exp'].unique()
         self.exps_path = exps_path
+        self.summary_path = os.path.join(exps_path, f'GROUP_SUMMARY_{name}')
+        if not os.path.exists(self.summary_path):
+            os.makedirs(self.summary_path)
         self.exp_names = exp_names
         self.exp_better_names = exp_better_names
         
-    def summarize_exps(self):
+    def summarize_exps(self, datasets = ["Val", "Test"], metrics = ['B-Acc._x', 'F1_x', 'ECE'], higher_is_better = {'B-Acc._x': True, 'F1_x': True, 'ECE': False}):
         '''Summarizes the results of multiple experiments, e.g. different hyperparameter settings.'''
         print(f"Summarizing the results from {len(self.exp_names)} experiments")
         exps_results = []
@@ -127,7 +131,8 @@ class ExperimentsSummerizer:
             exp_results.insert(0, 'Exp', exp_name)
             exps_results.append(exp_results)
         merged_results = pd.concat(exps_results, ignore_index=True)
-        merged_results.to_csv(os.path.join(self.exps_path, 'exps_results.csv'), index=False)
+        merged_results.to_csv(os.path.join(self.summary_path, 'exps_results.csv'), index=False)
+        shape_format_summarized_df(path=self.summary_path, orig_file_name="exps_results", new_file_name="summ_exps_results", datasets=datasets, metrics=metrics, higher_is_better=higher_is_better)
             
     def plot_progress(self, save=True, fig_size=(18, 6)):
         '''Plots the progress of multiple runs and experiments in one plot. Runs from the same 
@@ -164,7 +169,7 @@ class ExperimentsSummerizer:
 
                 # Save plots
                 if save:
-                    output_file = os.path.join(self.exps_path, f"exps_trajectories_{metric}.svg")
+                    output_file = os.path.join(self.summary_path, f"exps_trajectories_{metric}.svg")
                     plt.savefig(output_file, bbox_inches='tight')
                 else:
                     plt.show()
