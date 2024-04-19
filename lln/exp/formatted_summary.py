@@ -24,7 +24,7 @@ def shape_summarized_df(path, orig_file_name, datasets, metrics, higher_is_bette
         exp_row = [exp_better_names[exp]]
         for ds in datasets:
             mean_row = df[(df['Exp'] == exp) & (df['Dataset'] == ds) & (df['Run'] == 'Mean')]
-            std_row = df[(df['Exp'] == exp) & (df['Dataset'] == ds) & (df['Run'] == 'Mean')]
+            std_row = df[(df['Exp'] == exp) & (df['Dataset'] == ds) & (df['Run'] == 'Std')]
             assert len(mean_row) == len(std_row) == 1
             mean_row, std_row = mean_row.iloc[0], std_row.iloc[0]    
             exp_row += [f"{mean_row[m]:.2f} ± {std_row[m]:.2f}" for m in metrics]
