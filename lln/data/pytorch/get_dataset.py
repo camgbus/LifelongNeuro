@@ -22,7 +22,7 @@ class PandasDataset(Dataset):
 class LongDataset(Dataset):
     '''Dataset for longitudinal subject-visit data'''	
     def __init__(self, df, feature_cols, target_col, seq_to_seq=False, timepoints=None, 
-                 id_col='subject', seq_col='visit', y_dtype=torch.int64):
+                 id_col='subject', seq_col='visit', y_dtype=torch.int64, prev_target_as_feature=False):
         self.y_dtype = y_dtype
         
         # Sort data by subject and visit
@@ -43,7 +43,10 @@ class LongDataset(Dataset):
                     assert len(id_time_data) <= 1, f"Multiple entries for subject {id_x} at time {t}"
                     # If needed, pad with 0s for certain time points
                     if len(id_time_data) == 0:
-                        self.X[id_x].append(np.zeros(len(feature_cols), dtype=np.float32))
+                        if prev_target_as_feature:
+                            self.X[id_x].append(np.zeros(len(feature_cols)+1, dtype=np.float32))
+                        else:
+                            self.X[id_x].append(np.zeros(len(feature_cols), dtype=np.float32))
                         if seq_to_seq:
                             self.y[id_x].append(0)
                         else:
@@ -53,6 +56,11 @@ class LongDataset(Dataset):
                     else:
                         row = id_time_data.iloc[0]
                         self.X[row[id_col]].append(np.array(row[feature_cols].values, dtype=np.float32))
+                        if prev_target_as_feature:
+                            prev_y = 0
+                            if len(self.y[id_x]) > 0:
+                                prev_y = self.y[id_x][-1]
+                            self.X[row[id_col]][-1] = np.append(self.X[row[id_col]][-1], prev_y)                  
                         if seq_to_seq:
                             self.y[row[id_col]].append(row[target_col])
                         else:

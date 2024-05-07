@@ -85,8 +85,9 @@ def mask_sequence(X, y, mask_fraction=0.1):
     X = X * X_mask
     return X, y
 
-def perturb_data(X, y, x_noise=0.1, y_prob=0.1, nr_classes=3):
+def perturb_data(X, y, x_noise=0.1, y_prob=0.1):
     '''Add some Gaussian noise tot he inputs and randomly change the labels'''
+    nr_classes = y.max() + 1
     X = X + np.random.normal(loc=0, scale=x_noise, size=X.shape)
     y_shift = np.random.choice(nr_classes, size=y.shape, p=[1/nr_classes]*nr_classes)
     y = np.where(np.random.random(size=y.shape) < y_prob, y_shift, y)
