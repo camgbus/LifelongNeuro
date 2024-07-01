@@ -48,7 +48,7 @@ class ExperimentRun:
         self.split = split
         self.seed = seed
         if run_name is None:
-            self.run_name = f'SPLIT_{split}_SEED_{seed}'
+            self.run_name = f'SPLIT_{split}_SEED_{seed}_{config_name}'
         else:
             self.run_name = run_name
         self.run_path = os.path.join(self.exp_path, self.run_name)

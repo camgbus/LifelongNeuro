@@ -18,9 +18,6 @@ Averaging modes for multi-class classification:
 """
 
 from sklearn import metrics
-import numpy as np
-
-# Multi-class scores that are already averaged in a specific ways and receive lists of ints
 
 def confusion_matrix(y_true, y_pred, nr_labels=None):
     '''Returns a confusion matrix, where in the first dimension are the true classes and in the
@@ -28,42 +25,36 @@ def confusion_matrix(y_true, y_pred, nr_labels=None):
     labels = range(nr_labels) if nr_labels else None
     return metrics.confusion_matrix(y_true, y_pred, labels=labels)
 
-def accuracy(y_true, y_pred):
+def accuracy(y_true, y_pred, binarize_by_label=None):
     '''Accuracy = sum of TP for each class / total nr. elements'''
+    if binarize_by_label is not None:
+        y_true, y_pred = binarize(y_true, y_pred, label=binarize_by_label)
     return metrics.accuracy_score(y_true, y_pred)
 
-def balanced_accuracy(y_true, y_pred):
+def balanced_accuracy(y_true, y_pred, binarize_by_label=None):
     '''Balanced accuracy = average of recalls for each class'''
+    if binarize_by_label is not None:
+        y_true, y_pred = binarize(y_true, y_pred, label=binarize_by_label)
     return metrics.balanced_accuracy_score(y_true, y_pred)
 
-# Scores that receive probability outputs instead instead of predictions
-# AUROC: Area under plotting TPR (y) against FPR (x)
-#fpr, tpr, thresholds = metrics.roc_curve(Y_test, Y_pred_model_2, pos_label=1)
-#auc_model_2 = metrics.auc(fpr, tpr)
-#metrics.roc_auc_score(y_true, y_probs, average=avg_mode)
-
-# Brier = mean squared difference between the predicted probability and the actual outcome
-
-# Scores that can be averaged in different ways
-
-def f1(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div='warn'):
+def f1(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div=1.0):
     '''F1 Score = 2TP/(2TP+FP+FN)'''
     if binarize_by_label is not None:
         y_true, y_pred = binarize(y_true, y_pred, label=binarize_by_label)
         avg_mode = 'binary'
     return metrics.f1_score(y_true, y_pred, average=avg_mode, zero_division=zero_div)
 
-def recall(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div='warn'):
+def recall(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div=1.0):
     '''Sensitivity = Recall = Hit rate = TPR = TP/P'''
     if binarize_by_label is not None:
         y_true, y_pred = binarize(y_true, y_pred, label=binarize_by_label)
         avg_mode = 'binary'
     return metrics.recall_score(y_true, y_pred, average=avg_mode, zero_division=zero_div)
 
-def sensitivity(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div='warn'):
+def sensitivity(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div=1.0):
     return recall(y_true, y_pred, avg_mode, binarize_by_label, zero_div)
 
-def precision(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div='warn'):
+def precision(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div=1.0):
     '''Precision = Positive Predicted Value (PPV) = TP/(TP+FP)'''
     if binarize_by_label is not None:
         y_true, y_pred = binarize(y_true, y_pred, label=binarize_by_label)

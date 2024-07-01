@@ -12,6 +12,7 @@ from lln.plotting.seaborn.plots import highlight_legend_titles
 import matplotlib.font_manager as fm
 from lln.exp.formatted_summary import shape_format_summarized_df
 from lln.exp.results_plotting import per_experiment_confusion_matrix, per_experiment_feature_attributions, per_experiment_per_timepoint_confusion_matrix
+import sys
 
 class ExperimentSummerizer:
     '''A class that summarizes and extracts certain results from an experiment
@@ -21,7 +22,7 @@ class ExperimentSummerizer:
         self.exp_name = exp_name
         self.exp_path = os.path.join(self.exps_path, exp_name)
         self.config = json.load(open(os.path.join(self.exp_path, f"config_{config_name}.json"), 'r'))
-        self.config_suffix = f"_{config_name}" if config_name != 'train' else ''
+        self.config_suffix = f"_{config_name}"
         # Determine the run_names that summarize_run will run on
         if run_names is None:
             run_names = [f'SPLIT_{split}_SEED_{seed}{self.config_suffix}' for split, seed in itertools.product(range(self.config['nr_splits']), self.config['seeds'])]
@@ -30,19 +31,20 @@ class ExperimentSummerizer:
     def summarize_average_runs(self, state_selection_dataset='Val', state_selection_metric='B-Acc.', higher_is_better=True):
         '''Summarizes the results of multiple experiment runs, and averages them.'''
         for run_name in self.run_names:
+            print(f"Summarizing run {run_name}")
             self.summarize_run(run_name, state_selection_dataset, state_selection_metric, higher_is_better)
         self.average_runs()
-        self.plot_per_experiment_results(labels=self.config['labels'], subject_splits=['Train', 'Val', 'Test'], feature_attributions=False)
+        self.plot_per_experiment_results(labels=self.config['labels'], subject_splits=['Train', 'Val', 'Test'], feature_attributions=True)
         
     def plot_per_experiment_results(self, labels, subject_splits = ['Train', 'Val', 'Test'], feature_attributions=False):
         '''Plot the results of the experiments as confusion matrices.'''
-        exps_df = merge_in_df(self.exps_path, [self.exp_name], subject_splits=subject_splits)
+        exps_df = merge_in_df(self.exps_path, [self.exp_name], subject_splits=subject_splits, config_suffix=self.config_suffix)
         exps_dfs = {split_name: exps_df[exps_df['split'] == split_name] for split_name in subject_splits}
         for split_name in subject_splits:
             for weighted in [True, False]:
                 per_experiment_per_timepoint_confusion_matrix(exps_dfs[split_name], self.exps_path, exp_name=self.exp_name, exp_better_name=self.exp_name, labels=labels, seeds=[0], weighted=weighted, split_name=split_name)
                 per_experiment_confusion_matrix(exps_dfs[split_name], self.exps_path, exp_name=self.exp_name, exp_better_name=self.exp_name, labels=labels, seeds=[0], weighted=weighted, split_name=split_name)
-            if feature_attributions:
+            if False: #feature_attributions:
                 for only_matching in [None, 0, 1]:
                     per_experiment_feature_attributions(exps_dfs[split_name], self.exps_path, exp_name=self.exp_name, exp_better_name=self.exp_name, labels=labels, seeds=[0], only_matching=only_matching, split_name=split_name)
     
@@ -71,33 +73,34 @@ class ExperimentSummerizer:
 
         df = pd.merge(df_progess, df_loss_trajectory, on=['Epoch', 'Dataset'], how='inner')
 
-        results_path = os.path.join(run_path, f'results{self.config_suffix}.csv')
+        results_path = os.path.join(run_path, f'results.csv')
         df.to_csv(results_path, index=False)
     
     def average_runs(self):
         '''Summarizes the results of multiple experiment runs, e.g. splits or seeds. Each run should 
         have a subdirectory with the corresponding name inside the experiment directory.'''
-        if not os.path.exists(os.path.join(self.exp_path, f'results{self.config_suffix}.csv')):
+        if not os.path.exists(os.path.join(self.exp_path, f'results.csv')):
             results_df = None
             for run_name in self.run_names:
                 run_path = os.path.join(self.exp_path, run_name)
                 assert os.path.exists(run_path), f"Experiment {self.exp_name}, run {run_name} not found"
-                df = pd.read_csv(os.path.join(run_path, f'results{self.config_suffix}.csv'))
+                df = pd.read_csv(os.path.join(run_path, f'results.csv'))
                 df.insert(0, 'Run', run_name)
                 results_df = df if results_df is None else pd.concat([results_df, df], ignore_index=True)
             results_df = self._set_rows_mean_std(results_df)
             results_df.to_csv(os.path.join(self.exp_path, f'results{self.config_suffix}.csv'), index=False)
                 
             # Average the loss_trajectory and progress files
-            for file_name in ['loss_trajectory', 'progress']:
-                progress_df = None
-                for run_name in self.run_names:
-                    run_path = os.path.join(self.exp_path, run_name)
-                    df = pd.read_csv(os.path.join(run_path, 'trainer', file_name+'.csv'))
-                    df.insert(0, 'Run', run_name)
-                    progress_df = df if progress_df is None else pd.concat([progress_df, df], ignore_index=True)
-                progress_df = self._set_rows_mean_std(progress_df, non_avg=['Dataset', 'Epoch'])
-                progress_df.to_csv(os.path.join(self.exp_path, file_name+'.csv'), index=False)
+            if 'train' in self.config_suffix:
+                for file_name in ['loss_trajectory', 'progress']:
+                    progress_df = None
+                    for run_name in self.run_names:
+                        run_path = os.path.join(self.exp_path, run_name)
+                        df = pd.read_csv(os.path.join(run_path, 'trainer', file_name+'.csv'))
+                        df.insert(0, 'Run', run_name)
+                        progress_df = df if progress_df is None else pd.concat([progress_df, df], ignore_index=True)
+                    progress_df = self._set_rows_mean_std(progress_df, non_avg=['Dataset', 'Epoch'])
+                    progress_df.to_csv(os.path.join(self.exp_path, file_name+'.csv'), index=False)
 
     def _set_rows_mean_std(self, df, non_avg = ['Dataset']):
         non_avg_values = [[(x, col) for x in df[col].unique()] for col in non_avg]
@@ -191,14 +194,14 @@ class ExperimentsSummerizer:
                     plt.show()
                 plt.close()
                 
-def merge_in_df(exps_path, exp_names, exp_better_names = dict(), subject_splits = ['Val', 'Test']):
+def merge_in_df(exps_path, exp_names, exp_better_names = dict(), subject_splits = ['Val', 'Test'], config_suffix = "_train"):
     data = []
     for exp_name in exp_names:
         exp_path = os.path.join(exps_path, exp_name)
         config = json.load(open(os.path.join(exp_path, "config_train.json")))
         for split in range(config['nr_splits']):
             for seed in config['seeds']:
-                run_name = f"SPLIT_{split}_SEED_{seed}"
+                run_name = f"SPLIT_{split}_SEED_{seed}{config_suffix}"
                 run_splits = json.load(open(os.path.join(exp_path, run_name, "split.json"), 'rb'))
                 targets = pickle.load(open(os.path.join(exp_path, run_name, "model_outputs", "targets.pkl"), 'rb'))
                 predictions = pickle.load(open(os.path.join(exp_path, run_name, "model_outputs", "predictions.pkl"), 'rb'))

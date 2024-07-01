@@ -133,15 +133,14 @@ class NCANDALoader(SubjectsVisitsLoader):
                 print("Warning: You are using structural data without removing the individuals with structural abnormalities at baseline")        
         # Remove the subject-wise variables from visits_df and place them on the subjects_df
         # checking for missing values or inconsistencies
-        subjects_df, visits_df = add_subject_vars(None, visits_df, ["family_id", "sex", "site"], remove_from_visits=True, mode="nan")
+        subjects_df, visits_df = add_subject_vars(None, visits_df, ["family_id", "sex", "site"], remove_from_visits=False, mode="nan")
         missing_inconsistent_subjects = subjects_df[subjects_df.isnull().any(axis=1)]
         # There are no inconsistent subjects regarding family_id, race_label, hispanic or xex. But 
         # there are 25 subjects that have changed sites, which we will remove to perform OOD validation
         print(f"There are {len(missing_inconsistent_subjects)} subjects with missing values")
         subjects_df = subjects_df.dropna()
         visits_df = filter_visits_by_subjects(subjects_df, visits_df)
-        # For SES, we'll just take the first
-        subjects_df, visits_df = add_subject_vars(subjects_df, visits_df, ["ses_parent_yoe", "race_label", "hispanic"], remove_from_visits=True, mode="first")
+        subjects_df, visits_df = add_subject_vars(subjects_df, visits_df, ["race_label", "hispanic"], remove_from_visits=False, mode="first")
         print(f"After removing inconsistent subject rows, there are {len(subjects_df)} subjects and {len(visits_df)} visits.")
         # Leave only 5 race/ethnicity categories: White/Caucasian, Hispanic, African-American/Black, Asian and Other
         # + There is one individual without a race/ethnicity label (NCANDA_S00649), define as 'Other'
@@ -149,12 +148,29 @@ class NCANDALoader(SubjectsVisitsLoader):
         subjects_df['race_ethnicity'] = subjects_df.apply(lambda row: 'Hispanic' if row['hispanic'] == 'Y' else row['race_label'], axis=1)
         subjects_df = subjects_df.drop("race_label", axis=1)
         subjects_df = subjects_df.drop("hispanic", axis=1)
+        visits_df = visits_df.replace({'race_label': {None: 'Other', 'African-American_Caucasian': 'Other',  'Asian_Pacific_Islander': 'Other',  'Asian_White': 'Other', 'Native American/American Indian': 'Other', 'NativeAmerican_Caucasian': 'Other', 'Pacific Islander': 'Other', 'Pacific_Islander_Caucasian': 'Other'}})
+        visits_df['race_ethnicity'] = visits_df.apply(lambda row: 'Hispanic' if row['hispanic'] == 'Y' else row['race_label'], axis=1)
+        visits_df = visits_df.drop("race_label", axis=1)
+        visits_df = visits_df.drop("hispanic", axis=1)
         var_lst = [x for x in var_lst if x not in ["hispanic", "race_label", "ysr_anxdep_raw", "asr_anxdep_raw", "ysr_withdep_raw", "asr_withdrawn_raw", "ysr_somatic_raw", "asr_somatic_raw", "ysr_thought_raw", "asr_thought_raw", "ysr_attention_raw", "asr_attention_raw", "ysr_aggress_raw", "asr_aggressive_raw", "ysr_rulebrk_raw", "asr_rulebreak_raw"]]
         var_lst.insert(3, "race_ethnicity")
         var_groups["race_ethnicity"], var_subgroups["race_ethnicity"] = "redcap", "demographics"
-        subject_vars = ["family_id", "race_ethnicity", "sex", "site", "ses_parent_yoe"]
-        # If we are using structural features, average the left and right sides
+        subject_vars = ["family_id", "race_ethnicity", "sex", "site"]
+        # Group the family variables
+        for group_name, group_vars in grouped_family_predictors.items():
+            visits_df[group_name] = visits_df[group_vars].mean(axis=1)
+            var_lst = [x for x in var_lst if x not in group_vars]
+            var_lst.append(group_name)
+            var_groups[group_name], var_subgroups[group_name] = "redcap", "family"
         # Update the variables dataframe
         variables_df = update_variables(subjects_df, visits_df, pd.DataFrame({"var": var_lst, "subject_var": [v in subject_vars for v in var_lst], "group": [var_groups[v] for v in var_lst], "subgroup": [var_subgroups[v] for v in var_lst]}))
         return subjects_df, visits_df, variables_df
 
+# Within 'family', there are some predictors that should be grouped together
+grouped_family_predictors = {
+    "parental_control": ["parental_control_1", "parental_control_2", "parental_control_3", "parental_control_4", "parental_control_5", "parental_control_6"],
+    "parental_involvement": ["parental_involvement_1", "parental_involvement_2", "parental_involvement_3", "parental_involvement_4", "parental_involvement_5", "parental_involvement_6"],
+    "parental_knowledge": ["parental_knowledge_1", "parental_knowledge_2", "parental_knowledge_3", "parental_knowledge_4", "parental_knowledge_5"],
+    "parental_monitoring": ["parental_monitoring_1", "parental_monitoring_2", "parental_monitoring_3", "parental_monitoring_4", "parental_monitoring_5"],
+    "parental_supervision": ["parental_supervision_1", "parental_supervision_2", "parental_supervision_3", "parental_supervision_4"],
+    }

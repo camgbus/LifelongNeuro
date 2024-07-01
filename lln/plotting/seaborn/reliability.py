@@ -68,7 +68,7 @@ def plot_reliability_diagram(targets, predictions, uncertainties, name='',  nr_b
     plt.ylim(0, 1.1)
     
     # Draw a line from the lower-left corner to the upper-right corner
-    start_point = (0, 0.5)
+    start_point = (0, 1/(max(targets)+1))
     end_point = (len(df['confidence']) - 1, 1) # df['accuracy'].max())
     plt.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], 'k:', color='gray')
     # Add N labels at the top of each bar

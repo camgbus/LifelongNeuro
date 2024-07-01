@@ -32,7 +32,7 @@ def merge_in_df(exps_path, exp_names, exp_better_names = dict(), subject_splits 
                 targets = pickle.load(open(os.path.join(exp_path, run_name, "model_outputs", "targets.pkl"), 'rb'))
                 predictions = pickle.load(open(os.path.join(exp_path, run_name, "model_outputs", "predictions.pkl"), 'rb'))
                 nonpadded_rows = pickle.load(open(os.path.join(exp_path, run_name, "model_outputs", "nonpadded_rows.pkl"), 'rb'))
-                #attributions = pickle.load(open(os.path.join(exp_path, run_name, "model_outputs", "attributions.pkl"), 'rb'))
+                attributions = pickle.load(open(os.path.join(exp_path, run_name, "model_outputs", "attributions.pkl"), 'rb'))
                 for subject_split in subject_splits:
                     for subject in run_splits[subject_split]:
                         for t_ix in range(len(targets[subject])):
@@ -42,7 +42,7 @@ def merge_in_df(exps_path, exp_names, exp_better_names = dict(), subject_splits 
                                     "t_ix": t_ix,
                                     "target": targets[subject][t_ix],
                                     "pred": predictions[subject][t_ix],
-                                    #"attribution": attributions[subject][t_ix],
+                                    "attribution": attributions[subject][t_ix],
                                     "exp": exp_better_names.get(exp_name, exp_name),
                                     "seed": seed,
                                     "split": subject_split

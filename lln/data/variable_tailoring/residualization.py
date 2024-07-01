@@ -1,5 +1,6 @@
 """Residualize cofounding effects.
 """
+import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 
@@ -13,7 +14,8 @@ def residualize(df, var, new_var_name=None, covs=[], verbose=False):
     cat_covs = [cov for cov in covs if is_categorical[cov]]
     num_covs = [cov for cov in covs if not is_categorical[cov]]
     if verbose:
-        print(f"Residualizing {var} with respect to {covs}. Categorical covariates: {cat_covs}. Numerical covariates: {num_covs}")
+        correlation = np.corrcoef(df[var].values, df[num_covs[0]].values)[0, 1]
+        print(f"Residualizing {var} with respect to {covs}. Categorical covariates: {cat_covs}. Numerical covariates: {num_covs}. Correlation between {var} and {num_covs[0]} before residualization: {correlation:.2f}")
     if len(cat_covs) > 0:
         df_with_dummies.rename(columns={col: f'caty_{col}' for col in cat_covs}, inplace=True)
         cat_covs = [f'caty_{col}' for col in cat_covs]
@@ -32,12 +34,17 @@ def residualize(df, var, new_var_name=None, covs=[], verbose=False):
     
     # Generalized linear model
     model = sm.GLM(endog, exog, family=sm.families.Gaussian()).fit()
-    if verbose:
-        print(model.summary())
+    #if verbose:
+    #    print(model.summary())
 
     # Calculate residual variables
     if not new_var_name:
         new_var_name = var
-    df[new_var_name] = model.resid_response
+    residuals = model.resid_response
+    df[new_var_name] = residuals
     
+    if verbose:
+        correlation = np.corrcoef(residuals, df[num_covs[0]].values)[0, 1]
+        print(f"Correlation between {var} and {num_covs[0]} after residualization: {correlation:.2f}")
+        
     return df

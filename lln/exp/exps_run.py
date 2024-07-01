@@ -36,11 +36,7 @@ def run(args):
     failures = 0
     while next_exp is not None:
         exp_name, config_name, split, seed = next_exp
-        
-        if config_name != 'train':
-            exp_run = ExperimentRun(exps_path, exp_name, config_name, split=split, seed=seed, debugging=debugging, run_name=f'SPLIT_{split}_SEED_{seed}_{config_name}')
-        else:
-            exp_run = ExperimentRun(exps_path, exp_name, config_name, split=split, seed=seed, debugging=debugging)
+        exp_run = ExperimentRun(exps_path, exp_name, config_name, split=split, seed=seed, debugging=debugging, run_name=f'SPLIT_{split}_SEED_{seed}_{config_name}')
         if debugging:
             exp_run.run()
             exp_run.finish()

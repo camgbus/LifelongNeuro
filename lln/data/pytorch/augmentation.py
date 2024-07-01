@@ -50,29 +50,43 @@ def pad(X, y, subjects, max_length=None):
 # Static augmentation operations
 def upsample(X, y, subjects, per_time_point=True, reverse=True):
     '''Upsample the minority class. Note that reverse==True gives more heterogeneity.'''
-    assert per_time_point, "Only per time point upsampling is supported"
     new_X, new_y, new_subjects = X.copy(), y.copy(), subjects.copy()
-    timepoints = range(len(y[subjects[0]]))
-    if reverse:
-        timepoints = reversed(timepoints)
-    for t_ix in timepoints:
-        #print("Balancing timepoint", t_ix, "Total subjects", len(new_subjects))
-        y_t = np.array([new_y[subject][t_ix] for subject in new_subjects])
-        unique, counts = np.unique(y_t, return_counts=True)
-        #print("Counts before", counts)
+    if per_time_point:
+        timepoints = range(len(y[subjects[0]]))
+        if reverse:
+            timepoints = reversed(timepoints)
+        for t_ix in timepoints:
+            #print("Balancing timepoint", t_ix, "Total subjects", len(new_subjects))
+            y_t = np.array([new_y[subject][t_ix] for subject in new_subjects])
+            unique, counts = np.unique(y_t, return_counts=True)
+            #print("Counts before", counts)
+            for class_ix, count in zip(unique, counts):
+                if count < max(counts):
+                    #print("Upsampling class", class_ix, count, max(counts))
+                    minority_subjects = [s for s in new_subjects if new_y[s][t_ix] == class_ix]
+                    duplicated_subjects = np.random.choice(minority_subjects, size=max(counts)-count)
+                    for new_subject_ix, old_subject in enumerate(duplicated_subjects):
+                        new_subject = f"upsampled_{t_ix}_{class_ix}_{new_subject_ix}"
+                        new_subjects.append(new_subject)    
+                        new_X[new_subject], new_y[new_subject] = new_X[old_subject], new_y[old_subject]
+            y_t = np.array([new_y[subject][t_ix] for subject in new_subjects])
+            unique, counts = np.unique(y_t, return_counts=True)
+            #print("Counts after", unique, counts)
+        return new_X, new_y, new_subjects
+    else:
+        y_max = np.array([max(new_y[subject]) for subject in new_subjects])
+        unique, counts = np.unique(y_max, return_counts=True)
         for class_ix, count in zip(unique, counts):
             if count < max(counts):
-                #print("Upsampling class", class_ix, count, max(counts))
-                minority_subjects = [s for s in new_subjects if new_y[s][t_ix] == class_ix]
+                minority_subjects = [s for s in new_subjects if max(new_y[s]) == class_ix]
                 duplicated_subjects = np.random.choice(minority_subjects, size=max(counts)-count)
                 for new_subject_ix, old_subject in enumerate(duplicated_subjects):
-                    new_subject = f"upsampled_{t_ix}_{class_ix}_{new_subject_ix}"
+                    new_subject = f"upsampled_{class_ix}_{new_subject_ix}"
                     new_subjects.append(new_subject)    
                     new_X[new_subject], new_y[new_subject] = new_X[old_subject], new_y[old_subject]
-        y_t = np.array([new_y[subject][t_ix] for subject in new_subjects])
-        unique, counts = np.unique(y_t, return_counts=True)
-        #print("Counts after", unique, counts)
-    return new_X, new_y, new_subjects
+            y_max = np.array([max(new_y[subject]) for subject in new_subjects])
+            unique, counts = np.unique(y_max, return_counts=True)
+        return new_X, new_y, new_subjects
 
 # Random augmentation operations
 def mask_sequence(X, y, mask_fraction=0.1):
@@ -85,9 +99,8 @@ def mask_sequence(X, y, mask_fraction=0.1):
     X = X * X_mask
     return X, y
 
-def perturb_data(X, y, x_noise=0.1, y_prob=0.1):
+def perturb_data(X, y, x_noise=0.1, y_prob=0.1, nr_classes=2):
     '''Add some Gaussian noise tot he inputs and randomly change the labels'''
-    nr_classes = y.max() + 1
     X = X + np.random.normal(loc=0, scale=x_noise, size=X.shape)
     y_shift = np.random.choice(nr_classes, size=y.shape, p=[1/nr_classes]*nr_classes)
     y = np.where(np.random.random(size=y.shape) < y_prob, y_shift, y)

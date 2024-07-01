@@ -49,6 +49,7 @@ def plot_confusion_matrix_for_timepoint(cm, labels=None, vmin=None, vmax=None, c
     if weighted:
         row_sums = np.sum(cm, axis=1)
         cm = cm / row_sums[:, np.newaxis]
+        cm = np.where(row_sums[:, np.newaxis] == 0, 0, cm)
         cm = cm * 100
     df = pd.DataFrame(cm, columns=labels)
     if labels is None:
