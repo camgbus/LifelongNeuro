@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+from sklearn.preprocessing import OneHotEncoder
 
 def residualize(df, var, new_var_name=None, covs=[], verbose=False):
     '''Residualize a variable with respect to a set of covariates.'''
@@ -14,14 +15,23 @@ def residualize(df, var, new_var_name=None, covs=[], verbose=False):
     cat_covs = [cov for cov in covs if is_categorical[cov]]
     num_covs = [cov for cov in covs if not is_categorical[cov]]
     if verbose:
-        correlation = np.corrcoef(df[var].values, df[num_covs[0]].values)[0, 1]
-        print(f"Residualizing {var} with respect to {covs}. Categorical covariates: {cat_covs}. Numerical covariates: {num_covs}. Correlation between {var} and {num_covs[0]} before residualization: {correlation:.2f}")
+        print(f"Residualizing {var} with respect to {covs}. Categorical covariates: {cat_covs}. Numerical covariates: {num_covs}.")
+        for cov in num_covs:
+            correlation = np.corrcoef(df[var].values, df[cov].values)[0, 1]
+            print(f"Correlation between {var} and {cov} before residualization: {correlation:.2f}")
+        for cov in cat_covs:
+            print(cov)
+            encoder = OneHotEncoder(sparse=False)
+            encoded_categorical = encoder.fit_transform(df[cov].values.reshape(-1, 1))
+            data = np.column_stack((df[var].values, encoded_categorical))
+            correlation_matrix = np.corrcoef(data, rowvar=False)
+            print(f"Correlation between {var} and {cov} before residualization: {correlation_matrix}")
     if len(cat_covs) > 0:
         df_with_dummies.rename(columns={col: f'caty_{col}' for col in cat_covs}, inplace=True)
-        cat_covs = [f'caty_{col}' for col in cat_covs]
+        cat_cov_dummies = [f'caty_{col}' for col in cat_covs]
         # Convert the categorical variables into dummy variables
         #'drop_first=True' drops the first category to avoid multicollinearity
-        df_with_dummies = pd.get_dummies(df_with_dummies, columns=cat_covs, drop_first=True, dtype=int)            
+        df_with_dummies = pd.get_dummies(df_with_dummies, columns=cat_cov_dummies, drop_first=True, dtype=int)            
     
     # Exog: The covariates we want to control for
     # Selecting the relevant variables for the independent variables (exog)
@@ -44,7 +54,13 @@ def residualize(df, var, new_var_name=None, covs=[], verbose=False):
     df[new_var_name] = residuals
     
     if verbose:
-        correlation = np.corrcoef(residuals, df[num_covs[0]].values)[0, 1]
-        print(f"Correlation between {var} and {num_covs[0]} after residualization: {correlation:.2f}")
-        
+        for cov in num_covs:
+            correlation = np.corrcoef(df[var].values, df[cov].values)[0, 1]
+            print(f"Correlation between {var} and {cov} after residualization: {correlation:.2f}")
+        for cov in cat_covs:
+            encoder = OneHotEncoder(sparse=False)
+            encoded_categorical = encoder.fit_transform(df[cov].values.reshape(-1, 1))
+            data = np.column_stack((df[var].values, encoded_categorical))
+            correlation_matrix = np.corrcoef(data, rowvar=False)
+            print(f"Correlation between {var} and {cov} after residualization: {correlation_matrix}")
     return df
