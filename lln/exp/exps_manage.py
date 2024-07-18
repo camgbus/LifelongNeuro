@@ -9,7 +9,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from lln.utils.io import load_json
 
-def create_exps_overview(exps_path, config_names, splits, seeds):
+def create_exps_overview(exps_path, config_names, splits, seeds, add_training_with_all_data=False):
     '''Creates a csv file with the summary of the experiments to be run.
     
     Args:
@@ -28,10 +28,13 @@ def create_exps_overview(exps_path, config_names, splits, seeds):
         
         exp_names = [item for item in os.listdir(exps_path) if os.path.isdir(os.path.join(exps_path, item))]
         
+        if add_training_with_all_data:
+            splits = ['ALL'] + list(splits)
+
         for exp_name, config_name, split, seed in itertools.product(exp_names, config_names, splits, seeds):
             writer.writerow({"exp": exp_name, "config": config_name, "split": str(split), "seed": seed, "state": "READY"})
 
-def add_exps_to_summary(exps_path, exp_names, config_names, splits, seeds):
+def add_exps_to_summary(exps_path, exp_names, config_names, splits, seeds, add_training_with_all_data=False):
     '''Updates the csv file with new experiments to be run.
     
     Args:
@@ -47,6 +50,9 @@ def add_exps_to_summary(exps_path, exp_names, config_names, splits, seeds):
     with open(csv_file, mode='a', newline='', encoding='utf-8') as file:
         writer = csv.DictWriter(file, fieldnames=columns)
         
+        if add_training_with_all_data:
+            splits = ['ALL'] + list(splits)
+
         for exp_name, config_name, split, seed in itertools.product(exp_names, config_names, splits, seeds):
             
             config = load_json(path=os.path.join(exps_path, exp_name), file_name=f'config_{config_name}')
