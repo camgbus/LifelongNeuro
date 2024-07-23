@@ -1,18 +1,20 @@
 """Loader for the NCANDA dataset, from the summary.csv files.
 The data should be in the following structure:
 | <data_path>
-|| NCANDA_SNAPS_8Y_REDCAP_V03
+|| NCANDA_SNAPS_9Y_REDCAP_V01
 ||| summaries
 |||| redcap
 ||||| ataxia.csv
 ||||| ...
-|| NCANDA_SNAPS_8Y_DIFFUSION_V01
+|||| additional 
+||||| ... (!) some of these are up to year 7, and standardized_network_efficiency is not from there
+|| NCANDA_SNAPS_9Y_DIFFUSION_V01
 |||| diffusion
 ||||| ...
 ||| summaries
-|| NCANDA_SNAPS_8Y_STRUCTURAL_V01
+|| NCANDA_SNAPS_9Y_STRUCTURAL_V01
 ||| summaries
-|| NCANDA_SNAPS_8Y_RESTINGSTATE_V01
+|| NCANDA_SNAPS_9Y_RESTINGSTATE_V01
 ||| summaries
 |||| restingstate
 """
@@ -25,11 +27,11 @@ import lln.utils.io as io
 from lln.data.data_loading.subjects_visits import SubjectsVisitsLoader
 from lln.data.frame_tailoring.subjects_visits_utils import add_subject_vars, filter_visits_by_subjects, filter_subjects_by_list, update_variables
 
-GROUP_PATHS = {'redcap': os.path.join('NCANDA_SNAPS_8Y_REDCAP_V03', 'summaries', 'redcap'),
-               'redcap_additional': os.path.join('NCANDA_SNAPS_8Y_REDCAP_V03', 'summaries', 'additional'),
-               'structural': os.path.join('NCANDA_SNAPS_8Y_STRUCTURAL_V01', 'summaries', 'structural', 'longitudinal', 'freesurfer'),
-               'functional': os.path.join('NCANDA_SNAPS_8Y_RESTINGSTATE_V01', 'summaries', 'restingstate'),
-               'diffusion': os.path.join('NCANDA_SNAPS_8Y_DIFFUSION_V01', 'summaries', 'diffusion')}
+GROUP_PATHS = {'redcap': os.path.join('NCANDA_SNAPS_9Y_REDCAP_V01', 'summaries', 'redcap'),
+               'redcap_additional': os.path.join('NCANDA_SNAPS_9Y_REDCAP_V01', 'summaries', 'additional'),
+               'structural': os.path.join('NCANDA_SNAPS_9Y_STRUCTURAL_V01', 'summaries', 'structural', 'longitudinal', 'freesurfer'),
+               'functional': os.path.join('NCANDA_SNAPS_9Y_RESTINGSTATE_V01', 'summaries', 'restingstate'),
+               'diffusion': os.path.join('NCANDA_SNAPS_9Y_DIFFUSION_V01', 'summaries', 'diffusion')}
 
 class NCANDALoader(SubjectsVisitsLoader):
     ''''Loads the NCANDA data into data frames'''
