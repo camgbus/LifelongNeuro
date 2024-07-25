@@ -28,13 +28,15 @@ class ExperimentSummerizer:
             run_names = [f'SPLIT_{split}_SEED_{seed}{self.config_suffix}' for split, seed in itertools.product(range(self.config['nr_splits']), self.config['seeds'])]
         self.run_names = run_names
     
-    def summarize_average_runs(self, state_selection_dataset='Val', state_selection_metric='B-Acc.', higher_is_better=True):
-        '''Summarizes the results of multiple experiment runs, and averages them.'''
+    def summarize_average_runs(self, epoch=None, state_selection_dataset='Val', state_selection_metric='B-Acc.', higher_is_better=True):
+        '''Summarizes the results of multiple experiment runs, and averages them.
+        If epochs is None, the best epoch is chosen for each fold on the state_selection_metric and state_selection_dataset.
+        If it is an array of epochs, the results for each epoch are summarized.
+        '''
         for run_name in self.run_names:
             print(f"Summarizing run {run_name}")
-            self.summarize_run(run_name, state_selection_dataset, state_selection_metric, higher_is_better)
+            self.summarize_run(run_name, epoch, state_selection_dataset, state_selection_metric, higher_is_better) 
         self.average_runs()
-        self.plot_per_experiment_results(labels=self.config['labels'], subject_splits=['Train', 'Val', 'Test'], feature_attributions=True)
         
     def plot_per_experiment_results(self, labels, subject_splits = ['Train', 'Val', 'Test'], feature_attributions=False):
         '''Plot the results of the experiments as confusion matrices.'''
@@ -48,8 +50,10 @@ class ExperimentSummerizer:
                 for only_matching in [None, 0, 1]:
                     per_experiment_feature_attributions(exps_dfs[split_name], self.exps_path, exp_name=self.exp_name, exp_better_name=self.exp_name, labels=labels, seeds=[0], only_matching=only_matching, split_name=split_name)
     
-    def summarize_run(self, run_name, state_selection_dataset='Val', state_selection_metric='B-Acc.', higher_is_better=True):
-        '''Export a results.csv file for each run, containing the best epoch for each metric and dataset.'''
+    def summarize_run(self, run_name, epoch=None, state_selection_dataset='Val', state_selection_metric='B-Acc.', higher_is_better=True):
+        '''Export a results.csv file for each run containing the best epoch for each metric and dataset.
+        For each epoch, export as well results_<epoch>.csv files containing the results for each epoch.
+        '''
         run_path = os.path.join(self.exp_path, run_name)
         # Looks for the best epoch for a given metric and dataset
         int_results_path = os.path.join(run_path, 'trainer')
@@ -57,16 +61,19 @@ class ExperimentSummerizer:
         df_progess = pd.read_csv(os.path.join(int_results_path, "progress.csv"))
         df_loss_trajectory = pd.read_csv(os.path.join(int_results_path, "loss_trajectory.csv"))
 
-        if 'Loss' in state_selection_metric:
-            df = df_loss_trajectory
+        if epoch is None:
+            if 'Loss' in state_selection_metric:
+                df = df_loss_trajectory
+            else:
+                df = df_progess
+                
+            df_selection = df[df['Dataset'] == state_selection_dataset].reset_index(drop=True)
+            if higher_is_better:
+                best_epoch = df_selection['Epoch'].iloc[df_selection[state_selection_metric].idxmax()]
+            else:
+                best_epoch = df_selection['Epoch'].iloc[df_selection[state_selection_metric].idxmin()]
         else:
-            df = df_progess
-            
-        df_selection = df[df['Dataset'] == state_selection_dataset].reset_index(drop=True)
-        if higher_is_better:
-            best_epoch = df_selection['Epoch'].iloc[df_selection[state_selection_metric].idxmax()]
-        else:
-            best_epoch = df_selection['Epoch'].iloc[df_selection[state_selection_metric].idxmin()]
+            best_epoch = epoch
 
         df_progess = df_progess[df_progess['Epoch'] == best_epoch]
         df_loss_trajectory = df_loss_trajectory[df_loss_trajectory['Epoch'] == best_epoch]
@@ -123,6 +130,23 @@ class ExperimentSummerizer:
                     std_values[col] = value
                 df = pd.concat([df, pd.DataFrame([mean_values]), pd.DataFrame([std_values])], ignore_index=True)
         return df
+    
+    def select_best_epoch_global(self, state_selection_dataset='Val', state_selection_metric='B-Acc.', higher_is_better=True):
+        dfs_selection = []
+        for run_name in self.run_names:
+            run_path = os.path.join(self.exp_path, run_name)
+            if 'Loss' in state_selection_metric:
+                dfs_selection.append(pd.read_csv(os.path.join(run_path, 'trainer', "loss_trajectory.csv")))
+            else:
+                dfs_selection.append(pd.read_csv(os.path.join(run_path, 'trainer', "progress.csv")))
+        df_selection = pd.concat(dfs_selection, ignore_index=True)
+        df_selection = df_selection.groupby(['Epoch', 'Dataset']).mean().reset_index()
+        df_selection = df_selection[df_selection['Dataset'] == state_selection_dataset].reset_index(drop=True)
+        if higher_is_better:
+            best_epoch = df_selection['Epoch'].iloc[df_selection[state_selection_metric].idxmax()]
+        else:
+            best_epoch = df_selection['Epoch'].iloc[df_selection[state_selection_metric].idxmin()]
+        return best_epoch
 
 class ExperimentsSummerizer:
     '''A class that summarizes the results of multiple experiments, plotting the training 
