@@ -48,6 +48,7 @@ def plot_confusion_matrix_for_timepoint(cm, labels=None, vmin=None, vmax=None, c
         title='', xlabel='Predicted', ylabel='Actual', weighted=False, name='', ax=None):
     if weighted:
         row_sums = np.sum(cm, axis=1)
+        row_sums = np.where(row_sums == 0, 0.001, row_sums)
         cm = cm / row_sums[:, np.newaxis]
         cm = np.where(row_sums[:, np.newaxis] == 0, 0, cm)
         cm = cm * 100

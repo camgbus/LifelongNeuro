@@ -25,40 +25,58 @@ def confusion_matrix(y_true, y_pred, nr_labels=None):
     labels = range(nr_labels) if nr_labels else None
     return metrics.confusion_matrix(y_true, y_pred, labels=labels)
 
-def accuracy(y_true, y_pred, binarize_by_label=None):
+def accuracy(y_true, y_pred, binarize_by_label=None, labels=None):
     '''Accuracy = sum of TP for each class / total nr. elements'''
     if binarize_by_label is not None:
         y_true, y_pred = binarize(y_true, y_pred, label=binarize_by_label)
+    if labels is not None:
+        y_true_pred = [(true, pred) for true, pred in zip(y_true, y_pred) if true in labels and pred in labels]
+        y_true, y_pred = [x[0] for x in y_true_pred], [x[1] for x in y_true_pred]
     return metrics.accuracy_score(y_true, y_pred)
 
-def balanced_accuracy(y_true, y_pred, binarize_by_label=None):
+def balanced_accuracy(y_true, y_pred, binarize_by_label=None, labels=None):
     '''Balanced accuracy = average of recalls for each class'''
     if binarize_by_label is not None:
         y_true, y_pred = binarize(y_true, y_pred, label=binarize_by_label)
+    if labels is not None:
+        y_true_pred = [(true, pred) for true, pred in zip(y_true, y_pred) if true in labels and pred in labels]
+        y_true, y_pred = [x[0] for x in y_true_pred], [x[1] for x in y_true_pred]
     return metrics.balanced_accuracy_score(y_true, y_pred)
 
-def f1(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div=1.0):
+def f1(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div=1.0, labels=None):
     '''F1 Score = 2TP/(2TP+FP+FN)'''
     if binarize_by_label is not None:
         y_true, y_pred = binarize(y_true, y_pred, label=binarize_by_label)
         avg_mode = 'binary'
+    if labels is not None:
+        y_true_pred = [(true, pred) for true, pred in zip(y_true, y_pred) if true in labels and pred in labels]
+        y_true, y_pred = [x[0] for x in y_true_pred], [x[1] for x in y_true_pred]
     return metrics.f1_score(y_true, y_pred, average=avg_mode, zero_division=zero_div)
 
-def recall(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div=1.0):
+def recall(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div=1.0, labels=None):
     '''Sensitivity = Recall = Hit rate = TPR = TP/P'''
     if binarize_by_label is not None:
         y_true, y_pred = binarize(y_true, y_pred, label=binarize_by_label)
         avg_mode = 'binary'
+    if labels is not None:
+        y_true_pred = [(true, pred) for true, pred in zip(y_true, y_pred) if true in labels and pred in labels]
+        y_true, y_pred = [x[0] for x in y_true_pred], [x[1] for x in y_true_pred]
     return metrics.recall_score(y_true, y_pred, average=avg_mode, zero_division=zero_div)
 
-def sensitivity(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div=1.0):
+def sensitivity(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div=1.0, labels=None):
+    if labels is not None:
+        y_true_pred = [(true, pred) for true, pred in zip(y_true, y_pred) if true in labels and pred in labels]
+        y_true, y_pred = [x[0] for x in y_true_pred], [x[1] for x in y_true_pred]
     return recall(y_true, y_pred, avg_mode, binarize_by_label, zero_div)
 
-def precision(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div=1.0):
+def precision(y_true, y_pred, avg_mode='macro', binarize_by_label=None, zero_div=1.0, labels=None):
     '''Precision = Positive Predicted Value (PPV) = TP/(TP+FP)'''
     if binarize_by_label is not None:
         y_true, y_pred = binarize(y_true, y_pred, label=binarize_by_label)
         avg_mode = 'binary'
+    if labels is not None:
+        y_true_pred = [(true, pred) for true, pred in zip(y_true, y_pred) if true in labels and pred in labels]
+        y_true, y_pred = [x[0] for x in y_true_pred], [x[1] for x in y_true_pred]
     return metrics.precision_score(y_true, y_pred, average=avg_mode, zero_division=zero_div)
 
 def binarize(y_true, y_pred, label=1):
