@@ -163,12 +163,12 @@ class ExperimentsSummerizer:
         self.exp_names = exp_names
         self.exp_better_names = exp_better_names
         
-    def summarize_exps(self, datasets = ["Val", "Test"], metrics = ['B-Acc._x', 'F1_x', 'ECE'], higher_is_better = {'B-Acc._x': True, 'F1_x': True, 'ECE': False}):
+    def summarize_exps(self, datasets = ["Val", "Test"], metrics = ['B-Acc.', 'F1_mi'], higher_is_better = {'B-Acc.': True, 'F1_mi': True}, config=  'train'):
         '''Summarizes the results of multiple experiments, e.g. different hyperparameter settings.'''
         print(f"Summarizing the results from {len(self.exp_names)} experiments")
         exps_results = []
         for exp_name in self.exp_names:
-            exp_results = pd.read_csv(os.path.join(self.exps_path, exp_name, 'results.csv'))
+            exp_results = pd.read_csv(os.path.join(self.exps_path, exp_name, f'results_{config}.csv'))
             exp_results = exp_results[(exp_results['Run'] == 'Mean') | (exp_results['Run'] == 'Std')]
             exp_name = exp_name if self.exp_better_names is None else self.exp_better_names[exp_name]
             exp_results.insert(0, 'Exp', exp_name)
