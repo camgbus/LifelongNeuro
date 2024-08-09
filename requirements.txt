@@ -21,3 +21,4 @@ fastdtw==0.3.4
 tslearn==0.6.3
 hdbscan==0.8.37
 h5py==3.11.0
+scikit-image==0.24.0
