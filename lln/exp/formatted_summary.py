@@ -16,8 +16,8 @@ def shape_summarized_df(path, orig_file_name, datasets, metrics, higher_is_bette
     df = pd.read_csv(file)
     df = df[df['Dataset'].isin(datasets)]
     exp_names = sorted(list(df['Exp'].unique()))
-    first_best_metric_means = {ds: {m: (0, None)  if higher_is_better[m] else (1000, None) for m in metrics} for ds in datasets}
-    second_best_metric_means = {ds: {m: (0, None)  if higher_is_better[m] else (1000, None) for m in metrics} for ds in datasets}
+    first_best_metric_means = {ds: {m: (0, None)  if higher_is_better.get(m, True) else (1000, None) for m in metrics} for ds in datasets}
+    second_best_metric_means = {ds: {m: (0, None)  if higher_is_better.get(m, True) else (1000, None) for m in metrics} for ds in datasets}
     if exp_better_names is None:
         exp_better_names = {x: x for x in exp_names}
     for exp in exp_names:
@@ -30,7 +30,7 @@ def shape_summarized_df(path, orig_file_name, datasets, metrics, higher_is_bette
             exp_row += [f"{mean_row[m]:.2f} ± {std_row[m]:.2f}" for m in metrics]
             # Formatting
             for m in metrics:
-                if higher_is_better[m]:
+                if higher_is_better.get(m, True):
                     if mean_row[m] > first_best_metric_means[ds][m][0]:
                         second_best_metric_means[ds][m] = first_best_metric_means[ds][m]
                         first_best_metric_means[ds][m] = (mean_row[m], exp)
