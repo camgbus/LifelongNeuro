@@ -24,3 +24,4 @@ h5py==3.11.0
 scikit-image==0.24.0
 kaleiko==0.2.1
 SimpleITK==2.3.1
+spectra==0.0.11
