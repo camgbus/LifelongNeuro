@@ -28,11 +28,19 @@ class Palette:
             Valid options are: ['cmy', 'cmyk', 'hsl', 'hsv', 'lab', 'lch', 'rgb', 'xyz']
         """
         self.inflection_points = inflection_points
-        self.scale = spectra.scale([c for p, c in inflection_points])
+        self.scale = spectra.scale([c for p, c in inflection_points]).domain([p for p, c in inflection_points])
         self.scale.colorspace(space)
 
-    def sample(self, n):
+    def swatch(self, n):
         return self.scale(n)
     
-    def swatch(self, nr):
+    def swatch_to_plt(self, n):
+        c = self.scale(n)
+        c = c.rgb + (0,)
+        return c
+    
+    def visualize_palette(self, nr):
         return swatches(self.scale.range(nr))
+    
+    def visualize_color(self, n):
+        return swatches([self.scale(n)])

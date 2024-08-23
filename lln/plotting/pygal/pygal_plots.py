@@ -2,7 +2,7 @@
 """
 import pygal
 from lln.data.variable_tailoring.discretization import boundaries_by_range
-from lln.plotting.colors import LIGHT_PALETTE
+from lln.plotting.colors.handpicked_colors import LIGHT_PALETTE
 
 custom_style = pygal.style.Style(
     colors=tuple(sorted(list(LIGHT_PALETTE.values())))
