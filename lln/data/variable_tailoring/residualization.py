@@ -5,7 +5,7 @@ import pandas as pd
 import statsmodels.api as sm
 from sklearn.preprocessing import OneHotEncoder
 
-def residualize(df, var, new_var_name=None, covs=[], verbose=False):
+def residualize(df, var, new_var_name=None, covs=[], verbose=False, add_back_dummies=False):
     '''Residualize a variable with respect to a set of covariates.'''
                 
     df_with_dummies = df.copy()
@@ -51,7 +51,18 @@ def residualize(df, var, new_var_name=None, covs=[], verbose=False):
     if not new_var_name:
         new_var_name = var
     residuals = model.resid_response
-    df[new_var_name] = residuals
+    
+    # Add back the dummy variable effects
+    if add_back_dummies:
+        print("Adding back the dummy variable effects.")
+        for col in exog_columns:
+            if 'caty_' in col:
+                residuals += model.params[col] * df_with_dummies[col]
+                
+        # Adjust the residuals to have the same mean as the original variable
+        # residuals = residuals + df[var].mean() - residuals.mean()
+    
+    df.loc[:, new_var_name] = residuals
     
     if verbose:
         for cov in num_covs:
@@ -63,4 +74,12 @@ def residualize(df, var, new_var_name=None, covs=[], verbose=False):
             data = np.column_stack((df[var].values, encoded_categorical))
             correlation_matrix = np.corrcoef(data, rowvar=False)
             print(f"Correlation between {var} and {cov} after residualization: {correlation_matrix}")
+    return df
+
+def residualize_ignore_nans(df, var, new_var_name=None, covs=[], verbose=False, add_back_dummies=False):
+    df[new_var_name] = np.nan
+    df_no_nans = df.dropna(subset=[var])
+    print(f"First removing NaNs from {var}. Size of df: {len(df)}. Size of df_no_nans: {len(df_no_nans)}")
+    df_no_nans = residualize(df_no_nans, var, new_var_name, covs=covs, verbose=verbose, add_back_dummies=add_back_dummies)
+    df.update(df_no_nans)
     return df
