@@ -11,18 +11,19 @@ import matplotlib.pyplot as plt
 from lln.plotting.seaborn.plots import highlight_legend_titles
 import matplotlib.font_manager as fm
 from lln.exp.formatted_summary import shape_format_summarized_df
-from lln.exp.results_plotting import per_experiment_confusion_matrix, per_experiment_feature_attributions, per_experiment_per_timepoint_confusion_matrix
+from lln.exp.results_plotting import per_experiment_confusion_matrix, per_experiment_feature_attributions, per_experiment_per_timepoint_confusion_matrix, per_experiment_regression_results
 import sys
 
 class ExperimentSummerizer:
     '''A class that summarizes and extracts certain results from an experiment
     '''
-    def __init__(self, exps_path, exp_name, run_names=None, config_name='train'):
+    def __init__(self, exps_path, exp_name, run_names=None, config_name='train', regression=False):
         self.exps_path = exps_path
         self.exp_name = exp_name
         self.exp_path = os.path.join(self.exps_path, exp_name)
         self.config = json.load(open(os.path.join(self.exp_path, f"config_{config_name}.json"), 'r'))
         self.config_suffix = f"_{config_name}"
+        self.regression = regression
         # Determine the run_names that summarize_run will run on
         if run_names is None:
             run_names = [f'SPLIT_{split}_SEED_{seed}{self.config_suffix}' for split, seed in itertools.product(range(self.config['nr_splits']), self.config['seeds'])]
@@ -43,9 +44,12 @@ class ExperimentSummerizer:
         exps_df = merge_in_df(self.exps_path, [self.exp_name], subject_splits=subject_splits, config_suffix=self.config_suffix)
         exps_dfs = {split_name: exps_df[exps_df['split'] == split_name] for split_name in subject_splits}
         for split_name in subject_splits:
-            for weighted in [True, False]:
-                per_experiment_per_timepoint_confusion_matrix(exps_dfs[split_name], self.exps_path, exp_name=self.exp_name, exp_better_name=self.exp_name, labels=labels, seeds=[0], weighted=weighted, split_name=split_name)
-                per_experiment_confusion_matrix(exps_dfs[split_name], self.exps_path, exp_name=self.exp_name, exp_better_name=self.exp_name, labels=labels, seeds=[0], weighted=weighted, split_name=split_name)
+            if self.regression:
+                per_experiment_regression_results(exps_dfs[split_name], self.exps_path, exp_name=self.exp_name, exp_better_name=self.exp_name,  seeds=[0], split_name=split_name)
+            else:
+                for weighted in [True, False]:
+                    per_experiment_per_timepoint_confusion_matrix(exps_dfs[split_name], self.exps_path, exp_name=self.exp_name, exp_better_name=self.exp_name, labels=labels, seeds=[0], weighted=weighted, split_name=split_name)
+                    per_experiment_confusion_matrix(exps_dfs[split_name], self.exps_path, exp_name=self.exp_name, exp_better_name=self.exp_name, labels=labels, seeds=[0], weighted=weighted, split_name=split_name)
             if False: #feature_attributions:
                 for only_matching in [None, 0, 1]:
                     per_experiment_feature_attributions(exps_dfs[split_name], self.exps_path, exp_name=self.exp_name, exp_better_name=self.exp_name, labels=labels, seeds=[0], only_matching=only_matching, split_name=split_name)
@@ -77,9 +81,7 @@ class ExperimentSummerizer:
 
         df_progess = df_progess[df_progess['Epoch'] == best_epoch]
         df_loss_trajectory = df_loss_trajectory[df_loss_trajectory['Epoch'] == best_epoch]
-
         df = pd.merge(df_progess, df_loss_trajectory, on=['Epoch', 'Dataset'], how='inner')
-
         results_path = os.path.join(run_path, f'results.csv')
         df.to_csv(results_path, index=False)
     
@@ -163,7 +165,8 @@ class ExperimentsSummerizer:
         self.exp_names = exp_names
         self.exp_better_names = exp_better_names
         
-    def summarize_exps(self, datasets = ["Val", "Test"], metrics = ['B-Acc.', 'F1_mi'], higher_is_better = {'B-Acc.': True, 'F1_mi': True}, config=  'train'):
+    def summarize_exps(self, datasets = ["Val", "Test"], metrics = ['B-Acc.', 'F1_mi'], 
+                       higher_is_better = {'B-Acc.': True, 'F1_mi': True, 'MAE': False, 'MSE': False, 'RMSE': False, 'R2': True, 'Explained Variance': True}, config=  'train'):
         '''Summarizes the results of multiple experiments, e.g. different hyperparameter settings.'''
         print(f"Summarizing the results from {len(self.exp_names)} experiments")
         exps_results = []

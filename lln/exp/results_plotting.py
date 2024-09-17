@@ -14,6 +14,7 @@ from collections import defaultdict
 from lln.eval.metrics.classification import confusion_matrix
 from lln.plotting.seaborn.reliability import plot_reliability_diagram
 from lln.plotting.seaborn.confusion_matrix import plot_confusion_matrix, plot_confusion_matrix_for_timepoint
+from lln.plotting.seaborn.regression_results import plot_reg_scatters, plot_reg_boxplots
 from lln.plotting.pygal.rendering import save_svg, display_html
 from lln.utils.io import read_local_paths
 from lln.plotting.seaborn.rendering import save
@@ -72,7 +73,14 @@ def per_experiment_per_timepoint_confusion_matrix(df, exps_path, exp_name, exp_b
             ax.set_title(f"Time {time_ix}")
         save(plt, path=os.path.join(exps_path, exp_name), file_name=f'CM_t_{split_name}_W{weighted}.svg')
         plt.close()
-    
+
+def per_experiment_regression_results(df, exps_path, exp_name, exp_better_name, seeds=[0], weighted=False, split_name='Test'):
+    '''Plots the confusion matrix as a heatmap'''
+    df_seeds = df[df['seed'].isin(seeds)]
+    df_exp = df_seeds[df_seeds['exp'] == exp_better_name]
+    plot_reg_scatters(df_exp["target"], df_exp["pred"], name=split_name, save_path=os.path.join(exps_path, exp_name))
+    plot_reg_boxplots(df_exp["target"], df_exp["pred"], name=split_name, save_path=os.path.join(exps_path, exp_name))
+
 def calibrated_confusion(df, target_col, pred_col, labels, fig_name, weighted=False, save_path=None):
     cm = confusion_matrix(df[target_col], df[pred_col], nr_labels=len(labels))
     plot_confusion_matrix(cm, labels=labels, figure_size=(12,10), cmap='crest_r', weighted=weighted, name=fig_name, save_path=save_path)

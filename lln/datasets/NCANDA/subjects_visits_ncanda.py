@@ -109,7 +109,9 @@ class NCANDALoader(SubjectsVisitsLoader):
                     var_lst = [x for x in var_lst if x not in old_subscales]
         print(f"There were initially {len(set(list(visits_df['subject'])))} subjects and {len(visits_df)} visits.")
         # Rename visit names
-        visits_df = visits_df.replace({'visit': {"baseline": "year_0", "followup_1y": "year_1", "followup_2y": "year_2", "followup_3y": "year_3", "followup_4y": "year_4", "followup_5y": "year_5", "followup_6y": "year_6", "followup_7y": "year_7", "followup_8y": "year_8"}})
+        visit_mapping = {"baseline": "year_0"}
+        visit_mapping.update({f"followup_{i}y": f"year_{i}" for i in range(1, 15)})
+        visits_df = visits_df.replace({'visit': visit_mapping})
         # Rename all other columns
         variable_names = json.load(open(os.path.join(self.paths["additional"], "varsets", "variable_names.json"), "r"))
         visits_df = visits_df.rename(columns=variable_names)
