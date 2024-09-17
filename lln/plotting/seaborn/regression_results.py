@@ -11,23 +11,21 @@ import seaborn as sns
 sns.set(style="whitegrid")
 from lln.plotting.seaborn.rendering import save
 
-def plot_reg_scatters(y_true, y_pred, figure_size=(5.25,3.75), title='', xlabel='Actual', ylabel='Predicted', name='', save_path=None, ax=None):
+def plot_reg_scatters(y_true, y_pred, figure_size=(5.25,3.75), title='', xlabel='Actual', ylabel='Predicted', name='', save_path=None):
     '''Scatterplot of predicted vs. target values'''
     
-    if ax is None:
-        fig, ax = plt.subplots(figsize=figure_size)
-    
-    # Create the scatterplot
-    sns.scatterplot(x=y_true, y=y_pred, ax=ax, alpha=0.5)
-    
+    g = sns.jointplot(x=y_true, y=y_pred, kind="scatter", alpha=0.5, height=figure_size[0], marginal_kws={'bins': 20, 'fill': True})
+
     # Add the perfect prediction line (y = x) in light gray
     perfect_line = np.linspace(min(y_true.min(), y_pred.min()), max(y_true.max(), y_pred.max()), 100)
-    ax.plot(perfect_line, perfect_line, color='lightgray', linestyle='--')
+    g.ax_joint.plot(perfect_line, perfect_line, color='lightgray', linestyle='--')
+
+    # Add KDE density curves on the margins
+    g.plot_marginals(sns.kdeplot, color="blue", fill=True)
 
     # Set plot titles and labels
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    g.ax_joint.set_title(title, pad=20)
+    g.set_axis_labels(xlabel, ylabel)
     
     if save_path is not None:
         save(plt, path=save_path, file_name=f'RegScatter_{name}.svg')
