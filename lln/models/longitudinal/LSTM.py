@@ -8,12 +8,13 @@ import numpy as np
 
 class LSTM(Model):
     
-    def __init__(self, input_dim, hidden_dim, output_dim, nr_layers, *args, seq_to_seq=False, **kwargs):
+    def __init__(self, input_dim, hidden_dim, output_dim, nr_layers, *args, regression=False, seq_to_seq=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.hidden_dim = hidden_dim
         self.nr_layers = nr_layers
         self.seq_to_seq = seq_to_seq
         self.hidden_states = {}
+        self.regression = regression
         
         # LSTM layers
         self.lstm = nn.LSTM(input_dim, hidden_dim, nr_layers, batch_first=True)
@@ -46,7 +47,10 @@ class LSTM(Model):
         self.eval()
         with torch.no_grad():
             pred = self(X)
-            return int(pred.argmax().detach())
+            if self.regression:
+                return pred.detach().cpu().numpy()
+            else:
+                return int(pred.argmax().detach())
     
     def register_hooks(self):
         self.hidden_states = {}
