@@ -142,7 +142,7 @@ def plot_reg_boxplots_df(df, true_col, pred_col, hue_col=None, palette=None, hue
     #ax.set_title(f'{mode} between {true_col} and {pred_col}')
     ax.set_xlabel(facet_label)
     ax.set_ylabel(mode)
-    sns.boxplot(data=df, x=facet_col, y='Error', hue=hue_col, palette=palette, ax=ax)
+    sns.boxplot(data=df, x=facet_col, y='Error', hue=hue_col, palette=palette, ax=ax, order=sorted(df[facet_col].unique()))
     
     if hue_col is not None:
         hue_counts = df[hue_col].value_counts().to_dict()

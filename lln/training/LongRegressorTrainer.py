@@ -55,7 +55,7 @@ class LongRegressorTrainer(Trainer):
                     X, y = X.to(self.device), y.to(self.device)
                     pred = model(X)
                     total_loss += self.loss_f(pred, y).item()
-                    targets += list(y.detach().cpu().numpy())
+                    targets += list(y.squeeze().detach().cpu().numpy())
                     predictions += list(pred.squeeze(1).detach().cpu().numpy())
                     if self.seq_to_seq:
                         # Set to False the rows that are padding, recognized but having all features == 0

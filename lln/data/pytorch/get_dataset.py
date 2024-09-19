@@ -9,9 +9,13 @@ from torchvision.transforms import ToTensor, Lambda
 from collections import defaultdict
 
 class PandasDataset(Dataset):
-    def __init__(self, df, feature_cols, target_col, y_dtype=torch.int64):
+    def __init__(self, df, feature_cols, target_col, y_dtype=torch.int64, regression=False):
         self.X = torch.tensor(df[feature_cols].values, dtype=torch.float32)
-        self.y = torch.tensor(df[target_col].values, dtype=y_dtype)
+        if regression:
+            assert y_dtype != torch.int64, "Regression target must be continuous"
+            self.y = torch.tensor(df[target_col].values, dtype=y_dtype).unsqueeze(1)
+        else:
+            self.y = torch.tensor(df[target_col].values, dtype=y_dtype)
 
     def __len__(self):
         return len(self.y)
@@ -22,7 +26,8 @@ class PandasDataset(Dataset):
 class LongDataset(Dataset):
     '''Dataset for longitudinal subject-visit data'''	
     def __init__(self, df, feature_cols, target_col, seq_to_seq=False, timepoints=None, 
-                 id_col='subject', seq_col='visit', y_dtype=torch.int64, prev_target_as_feature=False):
+                 id_col='subject', seq_col='visit', y_dtype=torch.int64, regression=False,
+                 prev_target_as_feature=False):
         self.y_dtype = y_dtype
         
         # Sort data by subject and visit
@@ -81,7 +86,11 @@ class LongDataset(Dataset):
                 del self.y[subject]
             else:
                 self.X[subject] = torch.tensor(np.array(self.X[subject]), dtype=torch.float32)
-                self.y[subject] = torch.tensor(np.array(self.y[subject]), dtype=y_dtype)
+                if regression:
+                    assert y_dtype != torch.int64, "Regression target must be continuous"
+                    self.y[subject] = torch.tensor(np.array(self.y[subject]), dtype=y_dtype).unsqueeze(0)
+                else:
+                    self.y[subject] = torch.tensor(np.array(self.y[subject]), dtype=y_dtype)
                 
         self.subjects = list(self.X.keys())
 

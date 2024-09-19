@@ -52,7 +52,7 @@ class Trainer():
             if t % export_every == 0:
                 self.export(model, state_name="epoch{}".format(t), verbose=verbose)
             if self.seed is not None:
-                train_dataloader.generator.manual_seed(self.seed+t)            
+                train_dataloader.generator.manual_seed(self.seed+t)         
             loss_value = self.train_epoch(model, train_dataloader)
             if t % print_loss_every == 0 and verbose:
                 print("Ending epoch {}, loss {}".format(t+1, loss_value))

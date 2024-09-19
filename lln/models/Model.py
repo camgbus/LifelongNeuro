@@ -11,16 +11,17 @@ class Model(nn.Module):
         self.name = self.__class__.__name__
         self.save_path = save_path
         self.device = device
-        if not os.path.exists(save_path):
+        if save_path is not None and not os.path.exists(save_path):
             os.makedirs(save_path)
         self.init()
         
     def save(self, state_name='last', verbose=False):
         '''Saves a model state in the defined path, with the model name'''
-        model_state_name = self.name+'_'+state_name+'.pth'
-        torch.save(self.state_dict(), os.path.join(self.save_path, model_state_name))
-        if verbose:
-            print("Saved PyTorch model state {} in {}".format(model_state_name, self.save_path))
+        if self.save_path is not None:
+            model_state_name = self.name+'_'+state_name+'.pth'
+            torch.save(self.state_dict(), os.path.join(self.save_path, model_state_name))
+            if verbose:
+                print("Saved PyTorch model state {} in {}".format(model_state_name, self.save_path))
             
     def restore(self, state_name):
         '''Restores a model state for the given state name'''
