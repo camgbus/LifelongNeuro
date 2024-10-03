@@ -74,12 +74,12 @@ def per_experiment_per_timepoint_confusion_matrix(df, exps_path, exp_name, exp_b
         save(plt, path=os.path.join(exps_path, exp_name), file_name=f'CM_t_{split_name}_W{weighted}.svg')
         plt.close()
 
-def per_experiment_regression_results(df, exps_path, exp_name, exp_better_name, seeds=[0], weighted=False, split_name='Test'):
+def per_experiment_regression_results(df, exps_path, exp_name, exp_better_name, seeds=[0], weighted=False, split_name='Test', add_name=''):
     '''Plots the confusion matrix as a heatmap'''
     df_seeds = df[df['seed'].isin(seeds)]
     df_exp = df_seeds[df_seeds['exp'] == exp_better_name]
-    plot_reg_scatters(df_exp["target"], df_exp["pred"], name=split_name, save_path=os.path.join(exps_path, exp_name))
-    plot_reg_boxplots(df_exp["target"], df_exp["pred"], name=split_name, save_path=os.path.join(exps_path, exp_name))
+    plot_reg_scatters(df_exp["target"], df_exp["pred"], name='_'.join([split_name, add_name]), save_path=os.path.join(exps_path, exp_name))
+    plot_reg_boxplots(df_exp["target"], df_exp["pred"], name='_'.join([split_name, add_name]), save_path=os.path.join(exps_path, exp_name))
 
 def calibrated_confusion(df, target_col, pred_col, labels, fig_name, weighted=False, save_path=None):
     cm = confusion_matrix(df[target_col], df[pred_col], nr_labels=len(labels))

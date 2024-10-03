@@ -20,13 +20,17 @@ def residualize(df, var, new_var_name=None, covs=[], verbose=False, add_back_dum
             correlation = np.corrcoef(df[var].values, df[cov].values)[0, 1]
             print(f"Correlation between {var} and {cov} before residualization: {correlation:.2f}")
         for cov in cat_covs:
-            print(cov)
+            reference_group = df[cov].unique()[0]  # The first category is used as reference (dropped by get_dummies)
+            print(f"Reference group for {cov}: {reference_group}")
             encoder = OneHotEncoder(sparse=False)
             encoded_categorical = encoder.fit_transform(df[cov].values.reshape(-1, 1))
             data = np.column_stack((df[var].values, encoded_categorical))
             correlation_matrix = np.corrcoef(data, rowvar=False)
             print(f"Correlation between {var} and {cov} before residualization: {correlation_matrix}")
     if len(cat_covs) > 0:
+        #for cov in cat_covs:
+        #    reference_group = df[cov].unique()[0]  # The first category is used as reference (dropped by get_dummies)
+        #    print(f"Reference group for {cov}: {reference_group}")
         df_with_dummies.rename(columns={col: f'caty_{col}' for col in cat_covs}, inplace=True)
         cat_cov_dummies = [f'caty_{col}' for col in cat_covs]
         # Convert the categorical variables into dummy variables
@@ -58,9 +62,6 @@ def residualize(df, var, new_var_name=None, covs=[], verbose=False, add_back_dum
         for col in exog_columns:
             if 'caty_' in col:
                 residuals += model.params[col] * df_with_dummies[col]
-                
-        # Adjust the residuals to have the same mean as the original variable
-        # residuals = residuals + df[var].mean() - residuals.mean()
     
     df.loc[:, new_var_name] = residuals
     
@@ -77,9 +78,16 @@ def residualize(df, var, new_var_name=None, covs=[], verbose=False, add_back_dum
     return df
 
 def residualize_ignore_nans(df, var, new_var_name=None, covs=[], verbose=False, add_back_dummies=False):
+    using_tmp_name = False
+    if new_var_name is None or new_var_name == var:
+        new_var_name = f"{var}_temp"
+        using_tmp_name = True
     df[new_var_name] = np.nan
-    df_no_nans = df.dropna(subset=[var])
-    print(f"First removing NaNs from {var}. Size of df: {len(df)}. Size of df_no_nans: {len(df_no_nans)}")
+    df_no_nans = df.dropna(subset=[var]+covs)
+    print(f"First removing NaNs from {var} and covs. Size of df: {len(df)}. Size of df_no_nans: {len(df_no_nans)}")
     df_no_nans = residualize(df_no_nans, var, new_var_name, covs=covs, verbose=verbose, add_back_dummies=add_back_dummies)
     df.update(df_no_nans)
+    if using_tmp_name:
+        df[var] = df[new_var_name]
+        df.drop(columns=[new_var_name], inplace=True)
     return df

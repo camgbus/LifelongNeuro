@@ -39,13 +39,13 @@ class ExperimentSummerizer:
             self.summarize_run(run_name, epoch, state_selection_dataset, state_selection_metric, higher_is_better) 
         self.average_runs()
         
-    def plot_per_experiment_results(self, labels, subject_splits = ['Train', 'Val', 'Test'], feature_attributions=False):
+    def plot_per_experiment_results(self, labels, subject_splits = ['Train', 'Val', 'Test'], feature_attributions=False, seeds=None, add_name=''):
         '''Plot the results of the experiments as confusion matrices.'''
-        exps_df = merge_in_df(self.exps_path, [self.exp_name], subject_splits=subject_splits, config_suffix=self.config_suffix)
+        exps_df = merge_in_df(self.exps_path, [self.exp_name], subject_splits=subject_splits, config_suffix=self.config_suffix, seeds=seeds)
         exps_dfs = {split_name: exps_df[exps_df['split'] == split_name] for split_name in subject_splits}
         for split_name in subject_splits:
             if self.regression:
-                per_experiment_regression_results(exps_dfs[split_name], self.exps_path, exp_name=self.exp_name, exp_better_name=self.exp_name,  seeds=[0], split_name=split_name)
+                per_experiment_regression_results(exps_dfs[split_name], self.exps_path, exp_name=self.exp_name, exp_better_name=self.exp_name, seeds=seeds, split_name=split_name, add_name=add_name)
             else:
                 for weighted in [True, False]:
                     per_experiment_per_timepoint_confusion_matrix(exps_dfs[split_name], self.exps_path, exp_name=self.exp_name, exp_better_name=self.exp_name, labels=labels, seeds=[0], weighted=weighted, split_name=split_name)
@@ -149,6 +149,24 @@ class ExperimentSummerizer:
         else:
             best_epoch = df_selection['Epoch'].iloc[df_selection[state_selection_metric].idxmin()]
         return best_epoch
+    
+    def select_best_per_seed_epoch(self, seed=0, state_selection_dataset='Val', state_selection_metric='B-Acc.', higher_is_better=True):
+        dfs_selection = []
+        run_names = [f'SPLIT_{split}_SEED_{seed}{self.config_suffix}' for split in range(self.config['nr_splits'])]
+        for run_name in run_names:
+            run_path = os.path.join(self.exp_path, run_name)
+            if 'Loss' in state_selection_metric:
+                dfs_selection.append(pd.read_csv(os.path.join(run_path, 'trainer', "loss_trajectory.csv")))
+            else:
+                dfs_selection.append(pd.read_csv(os.path.join(run_path, 'trainer', "progress.csv")))
+        df_selection = pd.concat(dfs_selection, ignore_index=True)
+        df_selection = df_selection.groupby(['Epoch', 'Dataset']).mean().reset_index()
+        df_selection = df_selection[df_selection['Dataset'] == state_selection_dataset].reset_index(drop=True)
+        if higher_is_better:
+            best_epoch = df_selection['Epoch'].iloc[df_selection[state_selection_metric].idxmax()]
+        else:
+            best_epoch = df_selection['Epoch'].iloc[df_selection[state_selection_metric].idxmin()]
+        return best_epoch
 
 class ExperimentsSummerizer:
     '''A class that summarizes the results of multiple experiments, plotting the training 
@@ -221,13 +239,15 @@ class ExperimentsSummerizer:
                     plt.show()
                 plt.close()
                 
-def merge_in_df(exps_path, exp_names, exp_better_names = dict(), subject_splits = ['Val', 'Test'], config_suffix = "_train"):
+def merge_in_df(exps_path, exp_names, exp_better_names = dict(), subject_splits = ['Val', 'Test'], config_suffix = "_train", seeds=None):
     data = []
     for exp_name in exp_names:
         exp_path = os.path.join(exps_path, exp_name)
         config = json.load(open(os.path.join(exp_path, "config_train.json")))
+        if seeds is None:
+            seeds = config['seeds']
         for split in range(config['nr_splits']):
-            for seed in config['seeds']:
+            for seed in seeds:
                 run_name = f"SPLIT_{split}_SEED_{seed}{config_suffix}"
                 run_splits = json.load(open(os.path.join(exp_path, run_name, "split.json"), 'rb'))
                 targets = pickle.load(open(os.path.join(exp_path, run_name, "model_outputs", "targets.pkl"), 'rb'))
