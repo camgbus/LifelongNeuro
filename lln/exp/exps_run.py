@@ -25,6 +25,7 @@ def run(args):
     ready_state = 'READY' if not debugging else 'FAILED'
     
     # Initialize communicator
+    com = None
     if args.get('communicator', 'telegram_bot') == 'telegram_bot':
         com = TelegramBot()
 
