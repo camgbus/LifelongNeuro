@@ -6,6 +6,7 @@
 import os
 import numpy as np
 import pandas as pd
+from scipy.stats import linregress
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set(style="whitegrid")
@@ -14,18 +15,19 @@ from lln.plotting.seaborn.rendering import save
 def plot_reg_scatters(y_true, y_pred, figure_size=(5.25,3.75), title='', xlabel='Actual', ylabel='Predicted', name='', save_path=None):
     '''Scatterplot of predicted vs. target values'''
     
-    g = sns.jointplot(x=y_true, y=y_pred, kind="scatter", alpha=0.5, height=figure_size[0], marginal_kws={'bins': 20, 'fill': True})
-
-    # Add the perfect prediction line (y = x) in light gray
-    perfect_line = np.linspace(min(y_true.min(), y_pred.min()), max(y_true.max(), y_pred.max()), 100)
-    g.ax_joint.plot(perfect_line, perfect_line, color='lightgray', linestyle='--')
-
-    # Add KDE density curves on the margins
-    g.plot_marginals(sns.kdeplot, color="blue", fill=True)
-
+    # Create a figure and axes for the scatterplot
+    plt.figure(figsize=figure_size)
+    ax = sns.scatterplot(x=y_true, y=y_pred, alpha=0.5)
+    
+    # Fit a regression line
+    slope, intercept, _, _, _ = linregress(y_true, y_pred)
+    reg_line = slope * np.array(y_true) + intercept
+    ax.plot(y_true, reg_line, color='#6A8EAE', label='', linestyle='-', linewidth=2)
+    
     # Set plot titles and labels
-    g.ax_joint.set_title(title, pad=20)
-    g.set_axis_labels(xlabel, ylabel)
+    ax.set_title(title, pad=20)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
     
     if save_path is not None:
         save(plt, path=save_path, file_name=f'RegScatter_{name}.svg')
