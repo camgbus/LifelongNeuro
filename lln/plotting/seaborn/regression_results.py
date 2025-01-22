@@ -20,10 +20,25 @@ def plot_reg_scatters(y_true, y_pred, figure_size=(5.25,3.75), title='', xlabel=
     ax = sns.scatterplot(x=y_true, y=y_pred, alpha=0.5)
     
     # Fit a regression line
-    slope, intercept, _, _, _ = linregress(y_true, y_pred)
+    slope, intercept, r_value, p_value, std_err = linregress(y_true, y_pred)
     reg_line = slope * np.array(y_true) + intercept
     ax.plot(y_true, reg_line, color='#6A8EAE', label='', linestyle='-', linewidth=2)
     
+    # Define thresholds for p-value significance
+    thresholds = [1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
+    p_value_display = f"p > {thresholds[0]:.0e}"  # Default if no threshold is met
+
+    # Find the lowest threshold that the p-value satisfies
+    for threshold in thresholds:
+        if p_value <= threshold:
+            p_value_display = f"p <= {threshold:.0e}"
+            break
+    
+    # Add the p-value to the plot
+    ax.text(0.05, 0.95, p_value_display, transform=ax.transAxes, fontsize=12,
+            verticalalignment='top', bbox=dict(boxstyle="round,pad=0.3", edgecolor='gray', facecolor='white'))
+
+
     # Set plot titles and labels
     ax.set_title(title, pad=20)
     ax.set_xlabel(xlabel)
